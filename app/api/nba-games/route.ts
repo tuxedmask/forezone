@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
 
-const ODDS_API_KEY = process.env.ODDS_API_KEY;
-
-type OddsOrScoreGame = {
+type EspnGame = {
   id: string;
   home_team: string;
   away_team: string;
@@ -31,7 +29,6 @@ function getEasternWindowParts() {
   let day = Number(getPart("day"));
   const hour = Number(getPart("hour"));
 
-  // Fore Zone day rolls over at 2:00 AM ET
   if (hour < 2) {
     const rolloverDate = new Date(Date.UTC(year, month - 1, day));
     rolloverDate.setUTCDate(rolloverDate.getUTCDate() - 1);
@@ -66,7 +63,6 @@ function isGameInForeZoneDay(commenceTime: string) {
   let day = Number(getPart("day"));
   const hour = Number(getPart("hour"));
 
-  // Games between 12:00 AM and 1:59 AM ET belong to previous Fore Zone day
   if (hour < 2) {
     const rolloverDate = new Date(Date.UTC(year, month - 1, day));
     rolloverDate.setUTCDate(rolloverDate.getUTCDate() - 1);
@@ -85,10 +81,13 @@ function isGameInForeZoneDay(commenceTime: string) {
   );
 }
 
-async function fetchJson(url: string) {
-  const res = await fetch(url, {
-    next: { revalidate: 60 },
-  });
+async function fetchEspnGames() {
+  const res = await fetch(
+    "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard",
+    {
+      next: { revalidate: 60 },
+    }
+  );
 
   const text = await res.text();
 
@@ -96,62 +95,40 @@ async function fetchJson(url: string) {
     throw new Error(text || `Request failed with status ${res.status}`);
   }
 
-  return text ? JSON.parse(text) : [];
+  const data = text ? JSON.parse(text) : {};
+  const events = Array.isArray(data?.events) ? data.events : [];
+
+  const games: EspnGame[] = events
+    .map((event: any) => {
+      const competition = event?.competitions?.[0];
+      const competitors = Array.isArray(competition?.competitors)
+        ? competition.competitors
+        : [];
+
+      const home = competitors.find((team: any) => team.homeAway === "home");
+      const away = competitors.find((team: any) => team.homeAway === "away");
+
+      if (!event?.id || !event?.date || !home || !away) {
+        return null;
+      }
+
+      return {
+        id: String(event.id),
+        home_team: home.team?.displayName || "Home Team",
+        away_team: away.team?.displayName || "Away Team",
+        commence_time: event.date,
+      };
+    })
+    .filter(Boolean) as EspnGame[];
+
+  return games;
 }
 
 export async function GET() {
-  if (!ODDS_API_KEY) {
-    return NextResponse.json(
-      { error: "Missing ODDS_API_KEY in environment variables" },
-      { status: 500 }
-    );
-  }
-
   try {
-    const oddsUrl = new URL(
-      "https://api.the-odds-api.com/v4/sports/basketball_nba/odds"
-    );
-    oddsUrl.searchParams.set("apiKey", ODDS_API_KEY);
-    oddsUrl.searchParams.set("regions", "us");
-    oddsUrl.searchParams.set("markets", "h2h");
-    oddsUrl.searchParams.set("oddsFormat", "american");
+    const games = await fetchEspnGames();
 
-    const scoresUrl = new URL(
-      "https://api.the-odds-api.com/v4/sports/basketball_nba/scores"
-    );
-    scoresUrl.searchParams.set("apiKey", ODDS_API_KEY);
-    scoresUrl.searchParams.set("daysFrom", "1");
-
-    const [oddsData, scoresData] = await Promise.all([
-      fetchJson(oddsUrl.toString()),
-      fetchJson(scoresUrl.toString()),
-    ]);
-
-    const combinedMap = new Map<string, OddsOrScoreGame>();
-
-    for (const game of Array.isArray(scoresData) ? scoresData : []) {
-      if (game?.id && game?.commence_time) {
-        combinedMap.set(game.id, {
-          id: game.id,
-          home_team: game.home_team,
-          away_team: game.away_team,
-          commence_time: game.commence_time,
-        });
-      }
-    }
-
-    for (const game of Array.isArray(oddsData) ? oddsData : []) {
-      if (game?.id && game?.commence_time) {
-        combinedMap.set(game.id, {
-          id: game.id,
-          home_team: game.home_team,
-          away_team: game.away_team,
-          commence_time: game.commence_time,
-        });
-      }
-    }
-
-    const simplifiedGames = Array.from(combinedMap.values())
+    const simplifiedGames = games
       .filter((game) => isGameInForeZoneDay(game.commence_time))
       .sort(
         (a, b) =>
