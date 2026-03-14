@@ -82,8 +82,11 @@ function isGameInForeZoneDay(commenceTime: string) {
 }
 
 async function fetchEspnGames() {
+  const todayWindow = getEasternWindowParts();
+  const espnDate = `${todayWindow.year}${String(todayWindow.month).padStart(2, "0")}${String(todayWindow.day).padStart(2, "0")}`;
+
   const res = await fetch(
-    "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard",
+    `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates=${espnDate}`,
     {
       next: { revalidate: 60 },
     }
