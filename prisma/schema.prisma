@@ -1,0 +1,24 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Pick {
+  id            String   @id @default(cuid())
+  userId        String
+  userName      String
+  userImage     String?
+  gameId        String
+  awayTeam      String
+  homeTeam      String
+  commenceTime  DateTime
+  prop          String
+  americanOdds  String
+  decimalOdds   String
+  bookie        String
+  createdAt     DateTime @default(now())
+}
