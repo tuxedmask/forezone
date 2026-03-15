@@ -83,58 +83,78 @@ function PodiumCard({
 }) {
   const medal = place === 1 ? "👑" : place === 2 ? "🥈" : "🥉";
 
+  const pillarHeight = place === 1 ? 200 : place === 2 ? 150 : 110;
+
+  const color =
+    place === 1 ? "#ffd700" : place === 2 ? "#e5e7eb" : "#cd7f32";
+
   return (
-    <div
-      style={{
-        borderRadius: 20,
-        padding: 20,
-        textAlign: "center",
-        background: "#131021",
-        border: "1px solid #2a2344",
-      }}
-    >
-      <div style={{ fontSize: 28, marginBottom: 10 }}>{medal}</div>
+    <div style={{ display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
+      <div
+        style={{
+          borderRadius: 20,
+          padding: 18,
+          textAlign: "center",
+          background: "#131021",
+          border: "1px solid #2a2344",
+          marginBottom: 10,
+        }}
+      >
+        <div style={{ fontSize: 26 }}>{medal}</div>
 
-      {row.userImage ? (
-        <Image
-          src={row.userImage}
-          alt={row.userName}
-          width={70}
-          height={70}
-          unoptimized
-          style={{
-            borderRadius: "999px",
-            objectFit: "cover",
-            marginBottom: 10,
-          }}
-        />
-      ) : (
-        <div
-          style={{
-            width: 70,
-            height: 70,
-            borderRadius: "999px",
-            background: "#1a1630",
-            margin: "0 auto 10px",
-          }}
-        />
-      )}
+        {row.userImage ? (
+          <Image
+            src={row.userImage}
+            alt={row.userName}
+            width={64}
+            height={64}
+            unoptimized
+            style={{ borderRadius: "999px", margin: "10px auto" }}
+          />
+        ) : (
+          <div
+            style={{
+              width: 64,
+              height: 64,
+              borderRadius: "999px",
+              background: "#1a1630",
+              margin: "10px auto",
+            }}
+          />
+        )}
 
-      <div style={{ fontWeight: 700 }}>{row.userName}</div>
+        <div style={{ fontWeight: 800 }}>{row.userName}</div>
 
-      <div style={{ fontSize: 14, color: "#9f96c7", marginTop: 6 }}>
-        {row.wins}-{row.losses} • {row.winPct}%
+        <div style={{ color: "#9f96c7", fontSize: 13 }}>
+          {row.wins}-{row.losses} • {row.winPct}%
+        </div>
+
+        <div style={{ fontWeight: 900, fontSize: 22, marginTop: 6 }}>
+          {row.units >= 0 ? "+" : ""}
+          {row.units}u
+        </div>
       </div>
 
       <div
         style={{
-          fontWeight: 800,
-          fontSize: 22,
-          marginTop: 8,
+          height: pillarHeight,
+          background:
+            place === 1
+              ? "linear-gradient(#ffd700,#eab308)"
+              : place === 2
+              ? "linear-gradient(#d1d5db,#9ca3af)"
+              : "linear-gradient(#cd7f32,#92400e)",
+          borderRadius: "14px 14px 0 0",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "flex-start",
+          paddingTop: 12,
+          fontWeight: 900,
+          fontSize: 26,
+          color: "#111",
         }}
       >
-        {row.units >= 0 ? "+" : ""}
-        {row.units}u
+        {place}
       </div>
     </div>
   );
@@ -151,26 +171,23 @@ export default function LeaderboardPage() {
     let mounted = true;
 
     async function loadLeaderboard() {
-      try {
-        let url = "/api/leaderboard?range=all";
+      let url = "/api/leaderboard?range=all";
 
-        if (range === "weekly") {
-          url = `/api/leaderboard?range=weekly&week=${selectedWeek}`;
-        }
-
-        if (range === "monthly") {
-          url = `/api/leaderboard?range=monthly&month=${selectedMonth}`;
-        }
-
-        const res = await fetch(url, { cache: "no-store" });
-        const data = await res.json();
-
-        if (!mounted) return;
-
-        setRows(data || []);
-      } finally {
-        setLoading(false);
+      if (range === "weekly") {
+        url = `/api/leaderboard?range=weekly&week=${selectedWeek}`;
       }
+
+      if (range === "monthly") {
+        url = `/api/leaderboard?range=monthly&month=${selectedMonth}`;
+      }
+
+      const res = await fetch(url, { cache: "no-store" });
+      const data = await res.json();
+
+      if (!mounted) return;
+
+      setRows(data || []);
+      setLoading(false);
     }
 
     loadLeaderboard();
@@ -196,20 +213,13 @@ export default function LeaderboardPage() {
         fontFamily: "Arial",
       }}
     >
-      <section
-        style={{
-          maxWidth: 1180,
-          margin: "0 auto",
-          padding: "56px 24px 80px",
-        }}
-      >
+      <section style={{ maxWidth: 1180, margin: "0 auto", padding: "56px 24px" }}>
         <h1 style={{ fontSize: 44 }}>Leaderboard</h1>
 
         <p style={{ color: "#c7c3da", marginBottom: 20 }}>
-          {getRangeLabel(range)} rankings by units won.
+          {getRangeLabel(range)} rankings by units won
         </p>
 
-        {/* Range Buttons */}
         <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
           {(["weekly", "monthly", "all"] as RangeType[]).map((r) => (
             <button
@@ -229,23 +239,22 @@ export default function LeaderboardPage() {
           ))}
         </div>
 
-        {/* Podium */}
         {podium.length > 0 && (
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "1fr 1fr 1fr",
+              gridTemplateColumns: "1fr 1.2fr 1fr",
               gap: 20,
-              marginBottom: 30,
+              alignItems: "end",
+              marginBottom: 40,
             }}
           >
-            {podium.map((row, i) => (
-              <PodiumCard key={row.userId} row={row} place={(i + 1) as 1 | 2 | 3} />
-            ))}
+            {podium[1] && <PodiumCard row={podium[1]} place={2} />}
+            {podium[0] && <PodiumCard row={podium[0]} place={1} />}
+            {podium[2] && <PodiumCard row={podium[2]} place={3} />}
           </div>
         )}
 
-        {/* Remaining leaderboard */}
         {rest.map((row, index) => {
           const i = index + 3;
           const style = getRowStyles(i);
