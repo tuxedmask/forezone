@@ -1,21 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 
+function getEasternDateString(dateInput: string) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(dateInput));
+}
+
 export async function GET(req: NextRequest) {
   try {
     const dateParam = req.nextUrl.searchParams.get("date");
-
-    const selectedDate =
-      dateParam || new Date().toISOString().slice(0, 10);
-
-    const start = new Date(`${selectedDate}T00:00:00.000`);
-    const end = new Date(`${selectedDate}T23:59:59.999`);
+    const selectedDate = dateParam || getEasternDateString(new Date().toISOString());
 
     const { data, error } = await supabase
       .from("picks")
       .select("*")
-      .gte("commence_time", start.toISOString())
-      .lte("commence_time", end.toISOString())
       .order("commence_time", { ascending: true });
 
     if (error) {
@@ -25,7 +27,12 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    return NextResponse.json(data ?? []);
+    const filtered = (data ?? []).filter((pick) => {
+      if (!pick.commence_time) return false;
+      return getEasternDateString(pick.commence_time) === selectedDate;
+    });
+
+    return NextResponse.json(filtered);
   } catch (error: any) {
     return NextResponse.json(
       { error: error.message || "Failed to load picks" },
