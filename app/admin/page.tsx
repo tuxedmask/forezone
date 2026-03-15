@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { getNBALogo } from "@/lib/nbaTeams";
 
@@ -34,6 +34,38 @@ function formatGameTime(dateString: string) {
     month: "short",
     day: "numeric",
   });
+}
+
+function formatSelectedDate(dateString: string) {
+  const [year, month, day] = dateString.split("-").map(Number);
+  const localDate = new Date(year, month - 1, day);
+
+  return localDate.toLocaleDateString([], {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function getTodayLocalDateString() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = `${now.getMonth() + 1}`.padStart(2, "0");
+  const day = `${now.getDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function shiftDate(dateString: string, amount: number) {
+  const [year, month, day] = dateString.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+  date.setDate(date.getDate() + amount);
+
+  const nextYear = date.getFullYear();
+  const nextMonth = `${date.getMonth() + 1}`.padStart(2, "0");
+  const nextDay = `${date.getDate()}`.padStart(2, "0");
+
+  return `${nextYear}-${nextMonth}-${nextDay}`;
 }
 
 function TeamLogo({ team }: { team: string }) {
@@ -152,13 +184,22 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [savingId, setSavingId] = useState<number | null>(null);
+  const [selectedDate, setSelectedDate] = useState(getTodayLocalDateString());
 
-  async function loadPicks() {
+  const formattedSelectedDate = useMemo(
+    () => formatSelectedDate(selectedDate),
+    [selectedDate]
+  );
+
+  async function loadPicks(date: string) {
     try {
       setLoading(true);
       setError("");
 
-      const res = await fetch("/api/daily-picks", { cache: "no-store" });
+      const res = await fetch(`/api/daily-picks?date=${date}`, {
+        cache: "no-store",
+      });
+
       const data = await res.json();
 
       if (!res.ok) {
@@ -175,9 +216,9 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (session?.user?.email === ADMIN_EMAIL) {
-      loadPicks();
+      loadPicks(selectedDate);
     }
-  }, [session]);
+  }, [session, selectedDate]);
 
   async function gradePick(
     pickId: number,
@@ -289,9 +330,92 @@ export default function AdminPage() {
           Grade Picks
         </h1>
 
-        <p style={{ color: "#c7c3da", marginBottom: 32 }}>
+        <p style={{ color: "#c7c3da", marginBottom: 24 }}>
           Update submitted picks as win, loss, or pending.
         </p>
+
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 12,
+            alignItems: "center",
+            marginBottom: 28,
+            padding: 16,
+            border: "1px solid #31294c",
+            borderRadius: 18,
+            background: "rgba(17, 15, 27, 0.9)",
+          }}
+        >
+          <button
+            onClick={() => setSelectedDate((prev) => shiftDate(prev, -1))}
+            style={{
+              padding: "10px 14px",
+              borderRadius: 12,
+              border: "1px solid #31294c",
+              background: "#171327",
+              color: "#e9e6f7",
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            ← Prev
+          </button>
+
+          <input
+            type="date"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            style={{
+              padding: "10px 14px",
+              borderRadius: 12,
+              border: "1px solid #31294c",
+              background: "#0f0c1a",
+              color: "#ffffff",
+              fontSize: 14,
+            }}
+          />
+
+          <button
+            onClick={() => setSelectedDate((prev) => shiftDate(prev, 1))}
+            style={{
+              padding: "10px 14px",
+              borderRadius: 12,
+              border: "1px solid #31294c",
+              background: "#171327",
+              color: "#e9e6f7",
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            Next →
+          </button>
+
+          <button
+            onClick={() => setSelectedDate(getTodayLocalDateString())}
+            style={{
+              padding: "10px 14px",
+              borderRadius: 12,
+              border: "1px solid rgba(129,140,248,0.35)",
+              background: "rgba(99,102,241,0.14)",
+              color: "#c7d2fe",
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            Today
+          </button>
+
+          <div
+            style={{
+              color: "#c7c3da",
+              fontSize: 14,
+              marginLeft: "auto",
+            }}
+          >
+            Viewing: <span style={{ color: "#fff", fontWeight: 700 }}>{formattedSelectedDate}</span>
+          </div>
+        </div>
 
         <div
           style={{
@@ -306,7 +430,9 @@ export default function AdminPage() {
           {error && <p style={{ color: "#fca5a5" }}>{error}</p>}
 
           {!loading && !error && picks.length === 0 && (
-            <p style={{ color: "#c7c3da" }}>No picks submitted today.</p>
+            <p style={{ color: "#c7c3da" }}>
+              No picks submitted for {formattedSelectedDate}.
+            </p>
           )}
 
           {!loading && !error && picks.length > 0 && (

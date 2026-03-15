@@ -88,7 +88,7 @@ async function fetchEspnGames() {
   const res = await fetch(
     `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates=${espnDate}`,
     {
-      next: { revalidate: 60 },
+      next: { revalidate: 1800 },
     }
   );
 
