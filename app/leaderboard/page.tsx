@@ -15,7 +15,7 @@ type LeaderboardRow = {
   winPct: string;
 };
 
-type RangeType = "daily" | "monthly" | "all";
+type RangeType = "weekly" | "monthly" | "all";
 
 function getRankDisplay(index: number) {
   if (index === 0) return "🥇";
@@ -25,7 +25,7 @@ function getRankDisplay(index: number) {
 }
 
 function getRangeLabel(range: RangeType) {
-  if (range === "daily") return "Daily";
+  if (range === "weekly") return "Weekly";
   if (range === "monthly") return "Monthly";
   return "All Time";
 }
@@ -38,32 +38,43 @@ function getCurrentMonthString() {
   return new Date().toISOString().slice(0, 7);
 }
 
+function getStartOfWeekString() {
+  const now = new Date();
+  const day = now.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  const monday = new Date(now);
+  monday.setDate(now.getDate() + diff);
+  return monday.toISOString().slice(0, 10);
+}
+
 function getTopRowStyles(index: number) {
   if (index === 0) {
-    return {
-      background:
-        "linear-gradient(180deg, rgba(99,102,241,0.22), rgba(255,255,255,0.03))",
-      border: "1px solid rgba(129,140,248,0.42)",
-      boxShadow:
-        "0 0 24px rgba(129,140,248,0.22), inset 0 0 24px rgba(99,102,241,0.06)",
-    };
-  }
+  return {
+    background:
+      "linear-gradient(120deg, rgba(255,215,0,0.28), rgba(255,255,255,0.05), rgba(255,215,0,0.18))",
+    border: "1px solid rgba(255,215,0,0.65)",
+    boxShadow:
+      "0 0 35px rgba(255,215,0,0.45), inset 0 0 18px rgba(255,215,0,0.18)",
+  };
+}
 
   if (index === 1) {
     return {
       background:
-        "linear-gradient(180deg, rgba(148,163,184,0.14), rgba(255,255,255,0.02))",
-      border: "1px solid rgba(148,163,184,0.28)",
-      boxShadow: "0 0 18px rgba(148,163,184,0.12)",
+        "linear-gradient(180deg, rgba(192,192,192,0.18), rgba(255,255,255,0.02))",
+      border: "1px solid rgba(192,192,192,0.55)",
+      boxShadow:
+        "0 0 22px rgba(192,192,192,0.35), inset 0 0 14px rgba(192,192,192,0.12)",
     };
   }
 
   if (index === 2) {
     return {
       background:
-        "linear-gradient(180deg, rgba(180,83,9,0.16), rgba(255,255,255,0.02))",
-      border: "1px solid rgba(217,119,6,0.30)",
-      boxShadow: "0 0 18px rgba(217,119,6,0.14)",
+        "linear-gradient(180deg, rgba(205,127,50,0.22), rgba(255,255,255,0.02))",
+      border: "1px solid rgba(205,127,50,0.60)",
+      boxShadow:
+        "0 0 22px rgba(205,127,50,0.40), inset 0 0 14px rgba(205,127,50,0.12)",
     };
   }
 
@@ -79,40 +90,59 @@ export default function LeaderboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [range, setRange] = useState<RangeType>("all");
-  const [selectedDate, setSelectedDate] = useState(getTodayString());
+  const [selectedWeek, setSelectedWeek] = useState(getStartOfWeekString());
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthString());
 
-  useEffect(() => {
-    async function loadLeaderboard() {
-      try {
+ useEffect(() => {
+  let mounted = true;
+
+  async function loadLeaderboard(isInitialLoad = false) {
+    try {
+      if (isInitialLoad && mounted) {
         setLoading(true);
-        setError("");
+      }
 
-        let url = "/api/leaderboard?range=all";
+      setError("");
 
-        if (range === "daily") {
-          url = `/api/leaderboard?range=daily&date=${selectedDate}`;
-        } else if (range === "monthly") {
-          url = `/api/leaderboard?range=monthly&month=${selectedMonth}`;
-        }
+      let url = "/api/leaderboard?range=all";
 
-        const res = await fetch(url, { cache: "no-store" });
-        const data = await res.json();
+      if (range === "weekly") {
+        url = `/api/leaderboard?range=weekly&week=${selectedWeek}`;
+      } else if (range === "monthly") {
+        url = `/api/leaderboard?range=monthly&month=${selectedMonth}`;
+      }
 
-        if (!res.ok) {
-          throw new Error(data.error || "Failed to load leaderboard");
-        }
+      const res = await fetch(url, { cache: "no-store" });
+      const data = await res.json();
 
-        setRows(Array.isArray(data) ? data : []);
-      } catch (err: any) {
-        setError(err.message || "Failed to load leaderboard");
-      } finally {
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to load leaderboard");
+      }
+
+      if (!mounted) return;
+
+      setRows(Array.isArray(data) ? data : []);
+    } catch (err: any) {
+      if (!mounted) return;
+      setError(err.message || "Failed to load leaderboard");
+    } finally {
+      if (isInitialLoad && mounted) {
         setLoading(false);
       }
     }
+  }
 
-    loadLeaderboard();
-  }, [range, selectedDate, selectedMonth]);
+  loadLeaderboard(true);
+
+  const interval = setInterval(() => {
+    loadLeaderboard(false);
+  }, 30000);
+
+  return () => {
+    mounted = false;
+    clearInterval(interval);
+  };
+}, [range, selectedWeek, selectedMonth]);
 
   return (
     <main
@@ -159,7 +189,7 @@ export default function LeaderboardPage() {
             flexWrap: "wrap",
           }}
         >
-          {(["daily", "monthly", "all"] as RangeType[]).map((option) => {
+          {(["weekly", "monthly", "all"] as RangeType[]).map((option) => {
             const active = range === option;
 
             return (
@@ -190,7 +220,7 @@ export default function LeaderboardPage() {
           })}
         </div>
 
-        {range === "daily" && (
+        {range === "weekly" && (
           <div style={{ marginBottom: 24 }}>
             <label
               style={{
@@ -201,12 +231,12 @@ export default function LeaderboardPage() {
                 marginBottom: 8,
               }}
             >
-              Select Date
+              Select Week Start
             </label>
             <input
               type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
+              value={selectedWeek}
+              onChange={(e) => setSelectedWeek(e.target.value)}
               style={{
                 padding: "12px 14px",
                 borderRadius: 12,
@@ -270,20 +300,27 @@ export default function LeaderboardPage() {
                 const topStyles = getTopRowStyles(index);
 
                 return (
-                  <div
-                    key={row.userId}
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns:
-                        "80px minmax(220px, 1.5fr) repeat(4, minmax(90px, 0.75fr))",
-                      gap: 12,
-                      alignItems: "center",
-                      padding: "16px 14px",
-                      borderRadius: 16,
-                      transition: "transform 0.18s ease, box-shadow 0.18s ease",
-                      ...topStyles,
-                    }}
-                  >
+                 <div
+  key={row.userId}
+  style={{
+    display: "grid",
+    gridTemplateColumns:
+      "80px minmax(220px, 1.5fr) repeat(4, minmax(90px, 0.75fr))",
+    gap: 12,
+    alignItems: "center",
+    padding: "16px 14px",
+    borderRadius: 16,
+    cursor: "pointer",
+    transition: "transform 0.18s ease, box-shadow 0.18s ease",
+    ...topStyles,
+  }}
+  onMouseEnter={(e) => {
+    e.currentTarget.style.transform = "translateY(-3px)";
+  }}
+  onMouseLeave={(e) => {
+    e.currentTarget.style.transform = "translateY(0px)";
+  }}
+>
                     <div>
                       <div
                         style={{
@@ -292,7 +329,7 @@ export default function LeaderboardPage() {
                           color: index === 0 ? "#c7d2fe" : "white",
                         }}
                       >
-                        {getRankDisplay(index)}
+                        {index === 0 ? "👑" : getRankDisplay(index)}
                       </div>
                     </div>
 

@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 type EspnGame = {
   id: string;
@@ -7,8 +7,8 @@ type EspnGame = {
   commence_time: string;
 };
 
-function getEasternWindowParts() {
-  const now = new Date();
+function getDatePartsInEastern(dateInput: Date | string) {
+  const date = typeof dateInput === "string" ? new Date(dateInput) : dateInput;
 
   const formatter = new Intl.DateTimeFormat("en-US", {
     timeZone: "America/New_York",
@@ -19,7 +19,7 @@ function getEasternWindowParts() {
     hour12: false,
   });
 
-  const parts = formatter.formatToParts(now);
+  const parts = formatter.formatToParts(date);
 
   const getPart = (type: string) =>
     parts.find((part) => part.type === type)?.value || "00";
@@ -41,49 +41,54 @@ function getEasternWindowParts() {
   return { year, month, day };
 }
 
-function isGameInForeZoneDay(commenceTime: string) {
-  const gameDate = new Date(commenceTime);
+function getTodayForeZoneDateString() {
+  const parts = getDatePartsInEastern(new Date());
 
-  const formatter = new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/New_York",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    hour12: false,
-  });
+  return `${parts.year}-${String(parts.month).padStart(2, "0")}-${String(
+    parts.day
+  ).padStart(2, "0")}`;
+}
 
-  const parts = formatter.formatToParts(gameDate);
+function parseSelectedDate(dateParam: string | null) {
+  if (!dateParam) {
+    const [year, month, day] = getTodayForeZoneDateString()
+      .split("-")
+      .map(Number);
 
-  const getPart = (type: string) =>
-    parts.find((part) => part.type === type)?.value || "00";
-
-  let year = Number(getPart("year"));
-  let month = Number(getPart("month"));
-  let day = Number(getPart("day"));
-  const hour = Number(getPart("hour"));
-
-  if (hour < 2) {
-    const rolloverDate = new Date(Date.UTC(year, month - 1, day));
-    rolloverDate.setUTCDate(rolloverDate.getUTCDate() - 1);
-
-    year = rolloverDate.getUTCFullYear();
-    month = rolloverDate.getUTCMonth() + 1;
-    day = rolloverDate.getUTCDate();
+    return { year, month, day };
   }
 
-  const todayWindow = getEasternWindowParts();
+  const [year, month, day] = dateParam.split("-").map(Number);
+
+  if (!year || !month || !day) {
+    throw new Error("Invalid date format. Expected YYYY-MM-DD");
+  }
+
+  return { year, month, day };
+}
+
+function isGameInSelectedForeZoneDay(
+  commenceTime: string,
+  selectedDate: { year: number; month: number; day: number }
+) {
+  const gameParts = getDatePartsInEastern(commenceTime);
 
   return (
-    year === todayWindow.year &&
-    month === todayWindow.month &&
-    day === todayWindow.day
+    gameParts.year === selectedDate.year &&
+    gameParts.month === selectedDate.month &&
+    gameParts.day === selectedDate.day
   );
 }
 
-async function fetchEspnGames() {
-  const todayWindow = getEasternWindowParts();
-  const espnDate = `${todayWindow.year}${String(todayWindow.month).padStart(2, "0")}${String(todayWindow.day).padStart(2, "0")}`;
+async function fetchEspnGamesForDate(selectedDate: {
+  year: number;
+  month: number;
+  day: number;
+}) {
+  const espnDate = `${selectedDate.year}${String(selectedDate.month).padStart(
+    2,
+    "0"
+  )}${String(selectedDate.day).padStart(2, "0")}`;
 
   const res = await fetch(
     `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates=${espnDate}`,
@@ -127,12 +132,17 @@ async function fetchEspnGames() {
   return games;
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const games = await fetchEspnGames();
+    const dateParam = req.nextUrl.searchParams.get("date");
+    const selectedDate = parseSelectedDate(dateParam);
+
+    const games = await fetchEspnGamesForDate(selectedDate);
 
     const simplifiedGames = games
-      .filter((game) => isGameInForeZoneDay(game.commence_time))
+      .filter((game) =>
+        isGameInSelectedForeZoneDay(game.commence_time, selectedDate)
+      )
       .sort(
         (a, b) =>
           new Date(a.commence_time).getTime() -

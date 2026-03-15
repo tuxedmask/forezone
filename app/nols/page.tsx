@@ -48,6 +48,38 @@ function formatSubmittedTime(dateString: string) {
   });
 }
 
+function formatSelectedDate(dateString: string) {
+  const [year, month, day] = dateString.split("-").map(Number);
+  const localDate = new Date(year, month - 1, day);
+
+  return localDate.toLocaleDateString([], {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function getTodayLocalDateString() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = `${now.getMonth() + 1}`.padStart(2, "0");
+  const day = `${now.getDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function shiftDate(dateString: string, amount: number) {
+  const [year, month, day] = dateString.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+  date.setDate(date.getDate() + amount);
+
+  const nextYear = date.getFullYear();
+  const nextMonth = `${date.getMonth() + 1}`.padStart(2, "0");
+  const nextDay = `${date.getDate()}`.padStart(2, "0");
+
+  return `${nextYear}-${nextMonth}-${nextDay}`;
+}
+
 function hasGameStarted(dateString: string) {
   return new Date(dateString).getTime() <= Date.now();
 }
@@ -197,17 +229,26 @@ export default function NoLsPage() {
   const [picks, setPicks] = useState<Pick[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [selectedDate, setSelectedDate] = useState(getTodayLocalDateString());
+
+  const formattedSelectedDate = useMemo(
+    () => formatSelectedDate(selectedDate),
+    [selectedDate]
+  );
 
   useEffect(() => {
     let mounted = true;
 
     async function loadData() {
       try {
-        setError("");
+        if (mounted) {
+          setLoading(true);
+          setError("");
+        }
 
         const [gamesRes, picksRes] = await Promise.all([
-          fetch("/api/nba-games", { cache: "no-store" }),
-          fetch("/api/daily-picks", { cache: "no-store" }),
+          fetch(`/api/nba-games?date=${selectedDate}`, { cache: "no-store" }),
+          fetch(`/api/daily-picks?date=${selectedDate}`, { cache: "no-store" }),
         ]);
 
         const gamesData = await gamesRes.json();
@@ -243,7 +284,7 @@ export default function NoLsPage() {
       mounted = false;
       clearInterval(interval);
     };
-  }, []);
+  }, [selectedDate]);
 
   const allPicksSorted = useMemo(() => {
     return [...picks].sort(
@@ -333,9 +374,92 @@ export default function NoLsPage() {
           Fore Zone daily slate and all submitted picks.
         </p>
 
-        <p style={{ color: "#9f96c7", fontSize: 14, marginBottom: 32 }}>
+        <p style={{ color: "#9f96c7", fontSize: 14, marginBottom: 24 }}>
           Slate resets daily at 2:00 AM ET. Started and finished games stay visible.
         </p>
+
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 12,
+            alignItems: "center",
+            marginBottom: 28,
+            padding: 16,
+            border: "1px solid #31294c",
+            borderRadius: 18,
+            background: "rgba(17, 15, 27, 0.9)",
+          }}
+        >
+          <button
+            onClick={() => setSelectedDate((prev) => shiftDate(prev, -1))}
+            style={{
+              padding: "10px 14px",
+              borderRadius: 12,
+              border: "1px solid #31294c",
+              background: "#171327",
+              color: "#e9e6f7",
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            ← Prev
+          </button>
+
+          <input
+            type="date"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            style={{
+              padding: "10px 14px",
+              borderRadius: 12,
+              border: "1px solid #31294c",
+              background: "#0f0c1a",
+              color: "#ffffff",
+              fontSize: 14,
+            }}
+          />
+
+          <button
+            onClick={() => setSelectedDate((prev) => shiftDate(prev, 1))}
+            style={{
+              padding: "10px 14px",
+              borderRadius: 12,
+              border: "1px solid #31294c",
+              background: "#171327",
+              color: "#e9e6f7",
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            Next →
+          </button>
+
+          <button
+            onClick={() => setSelectedDate(getTodayLocalDateString())}
+            style={{
+              padding: "10px 14px",
+              borderRadius: 12,
+              border: "1px solid rgba(129,140,248,0.35)",
+              background: "rgba(99,102,241,0.14)",
+              color: "#c7d2fe",
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            Today
+          </button>
+
+          <div
+            style={{
+              color: "#c7c3da",
+              fontSize: 14,
+              marginLeft: "auto",
+            }}
+          >
+            Viewing: <span style={{ color: "#fff", fontWeight: 700 }}>{formattedSelectedDate}</span>
+          </div>
+        </div>
 
         {error && <p style={{ color: "#fca5a5", marginBottom: 24 }}>{error}</p>}
 
@@ -351,10 +475,12 @@ export default function NoLsPage() {
                 marginBottom: 24,
               }}
             >
-              <h2 style={{ marginTop: 0, marginBottom: 16 }}>All Picks Today</h2>
+              <h2 style={{ marginTop: 0, marginBottom: 16 }}>
+                All Picks for {formattedSelectedDate}
+              </h2>
 
               {allPicksSorted.length === 0 ? (
-                <div style={{ color: "#9f96c7" }}>No picks submitted yet.</div>
+                <div style={{ color: "#9f96c7" }}>No picks submitted for this date.</div>
               ) : (
                 <div style={{ display: "grid", gap: 12 }}>
                   {allPicksSorted.map((pick, index) => {
@@ -502,7 +628,7 @@ export default function NoLsPage() {
                   color: "#9f96c7",
                 }}
               >
-                No games found for the current slate.
+                No games found for {formattedSelectedDate}.
               </div>
             )}
 
