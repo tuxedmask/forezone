@@ -31,8 +31,19 @@ type MyPick = {
   settled_at: string | null;
 };
 
-function americanToDecimal(input: string): string {
-  const cleaned = input.trim().replace(/[^\d+-.-]/g, "");
+function parseGameTime(dateString: string) {
+  const ts = Date.parse(String(dateString));
+  return Number.isNaN(ts) ? null : ts;
+}
+
+function hasGameStarted(dateString: string) {
+  const ts = parseGameTime(dateString);
+  if (ts === null) return true;
+  return ts <= Date.now();
+}
+
+function americanToDecimal(input: string) {
+  const cleaned = input.trim().replace(/[^\d+.-]/g, "");
   const odds = Number(cleaned);
 
   if (!cleaned || Number.isNaN(odds) || odds === 0) return "";
@@ -43,7 +54,7 @@ function americanToDecimal(input: string): string {
   return decimalOdds.toFixed(2);
 }
 
-function decimalToAmerican(input: string): string {
+function decimalToAmerican(input: string) {
   const cleaned = input.trim().replace(/[^\d.]/g, "");
   const odds = Number(cleaned);
 
@@ -64,10 +75,6 @@ function formatGameTime(dateString: string) {
     month: "short",
     day: "numeric",
   });
-}
-
-function hasGameStarted(dateString: string) {
-  return new Date(dateString).getTime() <= Date.now();
 }
 
 function TeamLogo({ team }: { team: string }) {
@@ -122,16 +129,32 @@ export default function SubmitPickPage() {
   const [alreadyPicked, setAlreadyPicked] = useState(false);
   const [myPick, setMyPick] = useState<MyPick | null>(null);
 
-  const selectedGame = useMemo(
-    () => games.find((g) => g.id === selectedGameId),
-    [games, selectedGameId]
-  );
+  const futureGames = useMemo(() => {
+    return games
+      .filter((game) => {
+        const ts = parseGameTime(game.commence_time);
+        return ts !== null && ts > Date.now();
+      })
+      .sort((a, b) => {
+        const aTs = parseGameTime(a.commence_time) ?? 0;
+        const bTs = parseGameTime(b.commence_time) ?? 0;
+        return aTs - bTs;
+      });
+  }, [games]);
 
   const existingPickLocked = myPick
     ? hasGameStarted(myPick.commence_time)
     : false;
 
   const isEditing = alreadyPicked && !!myPick && !existingPickLocked;
+
+  const selectedGame = useMemo(() => {
+    if (isEditing && myPick) {
+      return games.find((g) => g.id === myPick.game_id) ?? null;
+    }
+
+    return futureGames.find((g) => g.id === selectedGameId) ?? null;
+  }, [games, futureGames, selectedGameId, isEditing, myPick]);
 
   useEffect(() => {
     async function loadGames() {
@@ -210,6 +233,20 @@ export default function SubmitPickPage() {
     }
   }, [session, status]);
 
+  useEffect(() => {
+    if (isEditing) return;
+
+    if (futureGames.length === 0) {
+      setSelectedGameId("");
+      return;
+    }
+
+    setSelectedGameId((current) => {
+      const stillValid = futureGames.some((game) => game.id === current);
+      return stillValid ? current : futureGames[0].id;
+    });
+  }, [futureGames, isEditing]);
+
   function handleAmericanOddsChange(value: string) {
     setAmericanOdds(value);
     setDecimalOdds(americanToDecimal(value));
@@ -237,12 +274,14 @@ export default function SubmitPickPage() {
     }
 
     if (!selectedGame) {
-      setSubmitError("Please select a game.");
+      setSubmitError("Please select a valid upcoming game.");
       return;
     }
 
     if (hasGameStarted(selectedGame.commence_time)) {
-      setSubmitError("This game has already started and can no longer be selected.");
+      setSubmitError(
+        "This game has already started and can no longer be selected."
+      );
       return;
     }
 
@@ -279,7 +318,8 @@ export default function SubmitPickPage() {
 
       if (!res.ok) {
         throw new Error(
-          data.error || (isEditing ? "Failed to update pick" : "Failed to submit pick")
+          data.error ||
+            (isEditing ? "Failed to update pick" : "Failed to submit pick")
         );
       }
 
@@ -488,31 +528,34 @@ export default function SubmitPickPage() {
               boxShadow: "0 10px 30px rgba(0,0,0,0.35)",
             }}
           >
-            <h2 style={{ marginTop: 0, marginBottom: 18 }}>Today&apos;s Games</h2>
+            <h2 style={{ marginTop: 0, marginBottom: 18 }}>
+              Today&apos;s Games
+            </h2>
 
-            {gamesLoading && <p style={{ color: "#b4b4c7" }}>Loading games...</p>}
-            {gamesError && <p style={{ color: "#fca5a5" }}>{gamesError}</p>}
-
-            {!gamesLoading && !gamesError && games.length === 0 && (
-              <p style={{ color: "#b4b4c7" }}>No games found today.</p>
+            {gamesLoading && (
+              <p style={{ color: "#b4b4c7" }}>Loading games...</p>
             )}
 
-            {!gamesLoading && !gamesError && games.length > 0 && (
+            {gamesError && <p style={{ color: "#fca5a5" }}>{gamesError}</p>}
+
+            {!gamesLoading && !gamesError && futureGames.length === 0 && (
+              <p style={{ color: "#b4b4c7" }}>No upcoming games available.</p>
+            )}
+
+            {!gamesLoading && !gamesError && futureGames.length > 0 && (
               <div style={{ display: "grid", gap: 16 }}>
-                {games.map((game) => {
+                {futureGames.map((game) => {
                   const isSelected = selectedGameId === game.id;
-                  const started = hasGameStarted(game.commence_time);
-                  const canSelect = !started && !existingPickLocked;
+                  const canSelect = !existingPickLocked;
 
                   return (
                     <button
                       key={game.id}
                       type="button"
                       onClick={() => {
-                        if (canSelect) {
-                          setSelectedGameId(game.id);
-                          setSubmitError("");
-                        }
+                        if (!canSelect) return;
+                        setSelectedGameId(game.id);
+                        setSubmitError("");
                       }}
                       disabled={!canSelect}
                       style={{
@@ -589,17 +632,13 @@ export default function SubmitPickPage() {
                           <div
                             style={{
                               fontSize: "12px",
-                              color: started
-                                ? "#fca5a5"
-                                : isSelected
-                                ? "#a5b4fc"
-                                : "#9f96c7",
+                              color: isSelected ? "#a5b4fc" : "#9f96c7",
                               marginBottom: 8,
                               textTransform: "uppercase",
                               letterSpacing: "1px",
                             }}
                           >
-                            {started ? "Started" : isSelected ? "Selected" : "Game"}
+                            {isSelected ? "Selected" : "Game"}
                           </div>
                           <div style={{ color: "#d6d3e6", fontSize: "14px" }}>
                             {formatGameTime(game.commence_time)}
@@ -638,7 +677,13 @@ export default function SubmitPickPage() {
                   marginBottom: 20,
                 }}
               >
-                <div style={{ color: "#9f96c7", fontSize: "12px", marginBottom: 10 }}>
+                <div
+                  style={{
+                    color: "#9f96c7",
+                    fontSize: "12px",
+                    marginBottom: 10,
+                  }}
+                >
                   SELECTED MATCHUP
                 </div>
 
@@ -664,7 +709,9 @@ export default function SubmitPickPage() {
 
             <div style={{ display: "grid", gap: 18 }}>
               <div>
-                <label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
+                <label
+                  style={{ display: "block", marginBottom: 8, fontWeight: 600 }}
+                >
                   Select Game
                 </label>
                 <select
@@ -684,22 +731,19 @@ export default function SubmitPickPage() {
                   }}
                 >
                   <option value="">Choose a game</option>
-                  {games.map((game) => {
-                    const started = hasGameStarted(game.commence_time);
-
-                    return (
-                      <option key={game.id} value={game.id} disabled={started}>
-                        {started ? "[STARTED] " : ""}
-                        {game.away_team} vs {game.home_team} —{" "}
-                        {formatGameTime(game.commence_time)}
-                      </option>
-                    );
-                  })}
+                  {futureGames.map((game) => (
+                    <option key={game.id} value={game.id}>
+                      {game.away_team} vs {game.home_team} —{" "}
+                      {formatGameTime(game.commence_time)}
+                    </option>
+                  ))}
                 </select>
               </div>
 
               <div>
-                <label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
+                <label
+                  style={{ display: "block", marginBottom: 8, fontWeight: 600 }}
+                >
                   Pick Type
                 </label>
                 <select
@@ -726,7 +770,9 @@ export default function SubmitPickPage() {
               </div>
 
               <div>
-                <label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
+                <label
+                  style={{ display: "block", marginBottom: 8, fontWeight: 600 }}
+                >
                   Prop / Pick
                 </label>
                 <input
@@ -751,7 +797,9 @@ export default function SubmitPickPage() {
               </div>
 
               <div>
-                <label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
+                <label
+                  style={{ display: "block", marginBottom: 8, fontWeight: 600 }}
+                >
                   American Odds
                 </label>
                 <input
@@ -773,7 +821,9 @@ export default function SubmitPickPage() {
               </div>
 
               <div>
-                <label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
+                <label
+                  style={{ display: "block", marginBottom: 8, fontWeight: 600 }}
+                >
                   Decimal Odds
                 </label>
                 <input
@@ -795,7 +845,9 @@ export default function SubmitPickPage() {
               </div>
 
               <div>
-                <label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
+                <label
+                  style={{ display: "block", marginBottom: 8, fontWeight: 600 }}
+                >
                   Bookie
                 </label>
                 <input

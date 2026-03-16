@@ -43,20 +43,31 @@ function decimalToAmerican(input: string): string {
   return `${Math.round(-100 / (odds - 1))}`;
 }
 
-function getTodayUtcRange() {
+function getEasternResetWindow() {
   const now = new Date();
 
-  const start = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0)
+  const easternNow = new Date(
+    now.toLocaleString("en-US", { timeZone: "America/New_York" })
   );
 
-  const end = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0, 0)
-  );
+  const resetStartEastern = new Date(easternNow);
+  resetStartEastern.setHours(2, 0, 0, 0);
+
+  if (easternNow < resetStartEastern) {
+    resetStartEastern.setDate(resetStartEastern.getDate() - 1);
+  }
+
+  const resetEndEastern = new Date(resetStartEastern);
+  resetEndEastern.setDate(resetEndEastern.getDate() + 1);
+
+  const offsetMs = now.getTime() - easternNow.getTime();
+
+  const resetStartUtc = new Date(resetStartEastern.getTime() + offsetMs);
+  const resetEndUtc = new Date(resetEndEastern.getTime() + offsetMs);
 
   return {
-    startOfToday: start.toISOString(),
-    startOfTomorrow: end.toISOString(),
+    startOfWindow: resetStartUtc.toISOString(),
+    endOfWindow: resetEndUtc.toISOString(),
   };
 }
 
@@ -159,6 +170,7 @@ export async function POST(req: Request) {
     }
 
     const decimalNumber = Number(finalDecimalOdds);
+
     if (Number.isNaN(decimalNumber) || decimalNumber <= 1) {
       return NextResponse.json(
         { error: "Decimal odds must be greater than 1." },
@@ -166,14 +178,14 @@ export async function POST(req: Request) {
       );
     }
 
-    const { startOfToday, startOfTomorrow } = getTodayUtcRange();
+    const { startOfWindow, endOfWindow } = getEasternResetWindow();
 
     const { data: existingPick, error: existingPickError } = await supabase
       .from("picks")
       .select("id")
       .eq("user_id", userId)
-      .gte("created_at", startOfToday)
-      .lt("created_at", startOfTomorrow)
+      .gte("created_at", startOfWindow)
+      .lt("created_at", endOfWindow)
       .limit(1);
 
     if (existingPickError) {
@@ -185,7 +197,14 @@ export async function POST(req: Request) {
 
     if (existingPick && existingPick.length > 0) {
       return NextResponse.json(
-        { error: "You already submitted a pick today" },
+        {
+          error: "You already submitted a pick today",
+          debug: {
+            startOfWindow,
+            endOfWindow,
+            now: new Date().toISOString(),
+          },
+        },
         { status: 400 }
       );
     }

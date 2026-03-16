@@ -3,6 +3,34 @@ import { supabase } from "@/lib/supabase";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
+function getEasternResetWindow() {
+  const now = new Date();
+
+  const easternNow = new Date(
+    now.toLocaleString("en-US", { timeZone: "America/New_York" })
+  );
+
+  const resetStartEastern = new Date(easternNow);
+  resetStartEastern.setHours(2, 0, 0, 0);
+
+  if (easternNow < resetStartEastern) {
+    resetStartEastern.setDate(resetStartEastern.getDate() - 1);
+  }
+
+  const resetEndEastern = new Date(resetStartEastern);
+  resetEndEastern.setDate(resetEndEastern.getDate() + 1);
+
+  const startDiff = now.getTime() - easternNow.getTime();
+
+  const resetStartUtc = new Date(resetStartEastern.getTime() + startDiff);
+  const resetEndUtc = new Date(resetEndEastern.getTime() + startDiff);
+
+  return {
+    startOfWindow: resetStartUtc.toISOString(),
+    endOfWindow: resetEndUtc.toISOString(),
+  };
+}
+
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
@@ -13,25 +41,14 @@ export async function GET() {
 
     const userId = (session.user as any).appUserId as string;
 
-    const now = new Date();
-    const startOfToday = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate()
-    ).toISOString();
-
-    const startOfTomorrow = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate() + 1
-    ).toISOString();
+    const { startOfWindow, endOfWindow } = getEasternResetWindow();
 
     const { data, error } = await supabase
       .from("picks")
       .select("*")
       .eq("user_id", userId)
-      .gte("created_at", startOfToday)
-      .lt("created_at", startOfTomorrow)
+      .gte("created_at", startOfWindow)
+      .lt("created_at", endOfWindow)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -43,6 +60,11 @@ export async function GET() {
     return NextResponse.json({
       hasPick: !!data,
       pick: data ?? null,
+      debug: {
+        startOfWindow,
+        endOfWindow,
+        now: new Date().toISOString(),
+      },
     });
   } catch (error: any) {
     return NextResponse.json(
