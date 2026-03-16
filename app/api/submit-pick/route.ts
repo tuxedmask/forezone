@@ -3,8 +3,19 @@ import { supabase } from "@/lib/supabase";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
+function parseGameTime(dateString: string) {
+  const ts = Date.parse(String(dateString));
+  return Number.isNaN(ts) ? null : ts;
+}
+
 function hasGameStarted(dateString: string) {
-  return new Date(dateString).getTime() <= Date.now();
+  const gameTime = parseGameTime(dateString);
+
+  if (gameTime === null) {
+    return true;
+  }
+
+  return Date.now() >= gameTime;
 }
 
 function americanToDecimal(input: string): string {
@@ -30,6 +41,23 @@ function decimalToAmerican(input: string): string {
   }
 
   return `${Math.round(-100 / (odds - 1))}`;
+}
+
+function getTodayUtcRange() {
+  const now = new Date();
+
+  const start = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0)
+  );
+
+  const end = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0, 0)
+  );
+
+  return {
+    startOfToday: start.toISOString(),
+    startOfTomorrow: end.toISOString(),
+  };
 }
 
 export async function POST(req: Request) {
@@ -86,9 +114,25 @@ export async function POST(req: Request) {
       );
     }
 
+    const parsedCommenceTime = parseGameTime(commenceTime);
+
+    if (parsedCommenceTime === null) {
+      return NextResponse.json(
+        { error: "Invalid game time received." },
+        { status: 400 }
+      );
+    }
+
     if (hasGameStarted(commenceTime)) {
       return NextResponse.json(
-        { error: "This game has already started" },
+        {
+          error: "This game has already started",
+          debug: {
+            now: new Date().toISOString(),
+            commenceTimeReceived: commenceTime,
+            commenceTimeParsed: new Date(parsedCommenceTime).toISOString(),
+          },
+        },
         { status: 400 }
       );
     }
@@ -122,18 +166,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const now = new Date();
-    const startOfToday = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate()
-    ).toISOString();
-
-    const startOfTomorrow = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate() + 1
-    ).toISOString();
+    const { startOfToday, startOfTomorrow } = getTodayUtcRange();
 
     const { data: existingPick, error: existingPickError } = await supabase
       .from("picks")
@@ -167,7 +200,7 @@ export async function POST(req: Request) {
           game_id: gameId,
           away_team: awayTeam,
           home_team: homeTeam,
-          commence_time: commenceTime,
+          commence_time: new Date(parsedCommenceTime).toISOString(),
           pick_type: pickType,
           prop: String(prop).trim(),
           american_odds: finalAmericanOdds,
