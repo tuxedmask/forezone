@@ -96,7 +96,7 @@ export default function Navbar() {
         backdropFilter: "blur(10px)",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 32 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 36 }}>
         <Link
           href="/"
           onMouseEnter={() => setHovered("logo")}
@@ -115,6 +115,7 @@ export default function Navbar() {
                 ? "0 0 10px rgba(129,140,248,0.65)"
                 : "none",
             whiteSpace: "nowrap",
+            flexShrink: 0,
           }}
         >
           <Image
@@ -136,6 +137,8 @@ export default function Navbar() {
                 <a
                   key={link.href}
                   href={link.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   onMouseEnter={() => setHovered(link.href)}
                   onMouseLeave={() => setHovered(null)}
                   style={{
@@ -148,7 +151,9 @@ export default function Navbar() {
                       ? "0 0 8px rgba(129,140,248,0.55)"
                       : "none",
                     position: "relative",
-                    paddingBottom: 6,
+                    padding: "6px 8px",
+                    borderRadius: 8,
+                    whiteSpace: "nowrap",
                   }}
                 >
                   {link.label}
@@ -156,10 +161,10 @@ export default function Navbar() {
                   <span
                     style={{
                       position: "absolute",
-                      left: 0,
+                      left: 8,
+                      right: 8,
                       bottom: 0,
                       height: 2,
-                      width: "100%",
                       background: "#6366f1",
                       borderRadius: 999,
                       boxShadow: isHovered
@@ -192,7 +197,9 @@ export default function Navbar() {
                       ? "0 0 8px rgba(129,140,248,0.55)"
                       : "none",
                   position: "relative",
-                  paddingBottom: 6,
+                  padding: "6px 8px",
+                  borderRadius: 8,
+                  whiteSpace: "nowrap",
                 }}
               >
                 {link.label}
@@ -200,10 +207,10 @@ export default function Navbar() {
                 <span
                   style={{
                     position: "absolute",
-                    left: 0,
+                    left: 8,
+                    right: 8,
                     bottom: 0,
                     height: 2,
-                    width: "100%",
                     background: "#6366f1",
                     borderRadius: 999,
                     boxShadow:
@@ -223,7 +230,410 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* rest of your file stays EXACT same */}
+      <div className="navbar-desktop-right" ref={profileMenuRef}>
+        {session?.user?.image ? (
+          <>
+            <button
+              type="button"
+              onClick={() => setMenuOpen((prev) => !prev)}
+              onMouseEnter={() => setHovered("profile")}
+              onMouseLeave={() => setHovered(null)}
+              style={{
+                background: "transparent",
+                border: "none",
+                padding: 0,
+                margin: 0,
+                display: "flex",
+                alignItems: "center",
+                cursor: "pointer",
+              }}
+            >
+              <Image
+                src={session.user.image}
+                alt="Profile"
+                width={38}
+                height={38}
+                unoptimized
+                style={{
+                  borderRadius: "999px",
+                  objectFit: "cover",
+                  border: "1px solid rgba(129,140,248,0.28)",
+                  transition: "0.2s ease",
+                  boxShadow:
+                    hovered === "profile" || menuOpen
+                      ? "0 0 12px rgba(129,140,248,0.7)"
+                      : "0 0 0 rgba(0,0,0,0)",
+                }}
+              />
+            </button>
+
+            <div
+              style={{
+                position: "absolute",
+                right: 20,
+                top: 62,
+                width: 210,
+                background: "rgba(19,16,33,0.98)",
+                border: "1px solid #31294c",
+                borderRadius: 16,
+                padding: 10,
+                boxShadow: "0 16px 34px rgba(0,0,0,0.45)",
+                display: "flex",
+                flexDirection: "column",
+                gap: 6,
+                opacity: menuOpen ? 1 : 0,
+                transform: menuOpen
+                  ? "translateY(0) scale(1)"
+                  : "translateY(-8px) scale(0.98)",
+                transformOrigin: "top right",
+                pointerEvents: menuOpen ? "auto" : "none",
+                transition: "opacity 0.18s ease, transform 0.18s ease",
+                zIndex: 1000,
+                backdropFilter: "blur(10px)",
+              }}
+            >
+              <div
+                style={{
+                  fontWeight: 700,
+                  fontSize: 14,
+                  padding: "6px 10px",
+                  color: "#c7d2fe",
+                }}
+              >
+                {displayName}
+              </div>
+
+              <div
+                style={{
+                  height: 1,
+                  background: "#31294c",
+                  margin: "4px 0 6px 0",
+                }}
+              />
+
+              <Link
+                href="/profile"
+                onClick={() => setMenuOpen(false)}
+                style={{
+                  padding: "10px 12px",
+                  borderRadius: 10,
+                  textDecoration: "none",
+                  color: "white",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  background: pathname === "/profile" ? "#262047" : "transparent",
+                }}
+              >
+                Profile
+              </Link>
+
+              <button
+                type="button"
+                onClick={() => signOut({ callbackUrl: "/login" })}
+                style={{
+                  padding: "10px 12px",
+                  borderRadius: 10,
+                  border: "none",
+                  background: "#262047",
+                  color: "#fca5a5",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  textAlign: "left",
+                }}
+              >
+                Sign Out
+              </button>
+            </div>
+          </>
+        ) : (
+          <Link
+            href="/login"
+            onMouseEnter={() => setHovered("signin")}
+            onMouseLeave={() => setHovered(null)}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 10,
+              textDecoration: "none",
+              padding: "11px 16px",
+              borderRadius: 14,
+              background:
+                hovered === "signin"
+                  ? "linear-gradient(180deg, #7377f5, #5b5fe8)"
+                  : "linear-gradient(180deg, #6366f1, #5558df)",
+              color: "white",
+              fontWeight: 700,
+              fontSize: 14,
+              border: "1px solid rgba(129,140,248,0.35)",
+              boxShadow:
+                hovered === "signin"
+                  ? "0 0 18px rgba(99,102,241,0.32)"
+                  : "0 0 12px rgba(99,102,241,0.20)",
+              transition: "0.18s ease",
+            }}
+          >
+            <span
+              style={{
+                width: 22,
+                height: 22,
+                borderRadius: "999px",
+                background: "rgba(255,255,255,0.14)",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 12,
+                lineHeight: 1,
+              }}
+            >
+              ✦
+            </span>
+            Sign In
+          </Link>
+        )}
+      </div>
+
+      <div className="navbar-mobile-right" ref={mobileMenuRef}>
+        <button
+          type="button"
+          onClick={() => setMobileMenuOpen((prev) => !prev)}
+          style={{
+            width: 42,
+            height: 42,
+            borderRadius: 12,
+            border: "1px solid #31294c",
+            background: "#1a1630",
+            cursor: "pointer",
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            position: "relative",
+          }}
+          aria-label="Open menu"
+        >
+          <span
+            style={{
+              position: "absolute",
+              width: 18,
+              height: 2,
+              borderRadius: 999,
+              background: "#c7d2fe",
+              transform: mobileMenuOpen
+                ? "translateY(0) rotate(45deg)"
+                : "translateY(-6px) rotate(0deg)",
+              transition: "transform 0.2s ease",
+            }}
+          />
+          <span
+            style={{
+              position: "absolute",
+              width: 18,
+              height: 2,
+              borderRadius: 999,
+              background: "#c7d2fe",
+              opacity: mobileMenuOpen ? 0 : 1,
+              transform: "translateY(0)",
+              transition: "opacity 0.18s ease",
+            }}
+          />
+          <span
+            style={{
+              position: "absolute",
+              width: 18,
+              height: 2,
+              borderRadius: 999,
+              background: "#c7d2fe",
+              transform: mobileMenuOpen
+                ? "translateY(0) rotate(-45deg)"
+                : "translateY(6px) rotate(0deg)",
+              transition: "transform 0.2s ease",
+            }}
+          />
+        </button>
+
+        <div
+          style={{
+            position: "absolute",
+            right: 20,
+            top: 62,
+            width: 230,
+            background: "rgba(19,16,33,0.98)",
+            border: "1px solid #31294c",
+            borderRadius: 16,
+            padding: 10,
+            boxShadow: "0 16px 34px rgba(0,0,0,0.45)",
+            display: "flex",
+            flexDirection: "column",
+            gap: 6,
+            opacity: mobileMenuOpen ? 1 : 0,
+            transform: mobileMenuOpen
+              ? "translateY(0) scale(1)"
+              : "translateY(-8px) scale(0.98)",
+            transformOrigin: "top right",
+            pointerEvents: mobileMenuOpen ? "auto" : "none",
+            transition: "opacity 0.18s ease, transform 0.18s ease",
+            zIndex: 1000,
+            backdropFilter: "blur(10px)",
+          }}
+        >
+          {session ? (
+            <>
+              <div
+                style={{
+                  fontWeight: 700,
+                  fontSize: 14,
+                  padding: "6px 10px",
+                  color: "#c7d2fe",
+                }}
+              >
+                {displayName}
+              </div>
+
+              <div
+                style={{
+                  height: 1,
+                  background: "#31294c",
+                  margin: "4px 0 6px 0",
+                }}
+              />
+            </>
+          ) : null}
+
+          {links.map((link) => {
+            const isActive = !link.external && pathname === link.href;
+
+            if (link.external) {
+              return (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setMobileMenuOpen(false)}
+                  style={{
+                    padding: "10px 12px",
+                    borderRadius: 10,
+                    textDecoration: "none",
+                    color: "white",
+                    fontSize: 14,
+                    fontWeight: 600,
+                    background: "transparent",
+                  }}
+                >
+                  {link.label}
+                </a>
+              );
+            }
+
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={() => setMobileMenuOpen(false)}
+                style={{
+                  padding: "10px 12px",
+                  borderRadius: 10,
+                  textDecoration: "none",
+                  color: isActive ? "#c7d2fe" : "white",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  background: isActive ? "#262047" : "transparent",
+                }}
+              >
+                {link.label}
+              </Link>
+            );
+          })}
+
+          {session ? (
+            <>
+              <Link
+                href="/profile"
+                onClick={() => setMobileMenuOpen(false)}
+                style={{
+                  padding: "10px 12px",
+                  borderRadius: 10,
+                  textDecoration: "none",
+                  color: pathname === "/profile" ? "#c7d2fe" : "white",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  background: pathname === "/profile" ? "#262047" : "transparent",
+                  marginTop: 4,
+                }}
+              >
+                Profile
+              </Link>
+
+              <button
+                type="button"
+                onClick={() => signOut({ callbackUrl: "/login" })}
+                style={{
+                  padding: "10px 12px",
+                  borderRadius: 10,
+                  border: "none",
+                  background: "#262047",
+                  color: "#fca5a5",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  textAlign: "left",
+                }}
+              >
+                Sign Out
+              </button>
+            </>
+          ) : (
+            <Link
+              href="/login"
+              onClick={() => setMobileMenuOpen(false)}
+              style={{
+                padding: "10px 12px",
+                borderRadius: 10,
+                textDecoration: "none",
+                color: "#c7d2fe",
+                fontSize: 14,
+                fontWeight: 700,
+                background: "#262047",
+                marginTop: 4,
+              }}
+            >
+              Sign In
+            </Link>
+          )}
+        </div>
+      </div>
+
+      <style jsx>{`
+        .navbar-desktop-links,
+        .navbar-desktop-right {
+          display: none;
+        }
+
+        .navbar-mobile-right {
+          display: flex;
+        }
+
+        @media (min-width: 900px) {
+          nav {
+            padding: 18px 32px;
+          }
+
+          .navbar-desktop-links {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: nowrap;
+          }
+
+          .navbar-desktop-right {
+            display: flex;
+            align-items: center;
+            position: relative;
+          }
+
+          .navbar-mobile-right {
+            display: none;
+          }
+        }
+      `}</style>
     </nav>
   );
 }
