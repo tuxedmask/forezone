@@ -47,21 +47,21 @@ function LeagueCard({
   return (
     <Link
       href={href}
-      className="group rounded-[24px] border border-white/10 bg-white/5 p-5 transition duration-300 hover:-translate-y-1 hover:border-emerald-300/30 hover:bg-white/[0.08]"
+      className="group flex h-full flex-col justify-between rounded-[24px] border border-white/10 bg-white/5 p-5 transition duration-300 hover:-translate-y-1 hover:border-emerald-300/30 hover:bg-white/[0.08]"
     >
-      <div className="flex min-h-[140px] flex-col justify-between">
-        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/10 p-2">
-          <img
-            src={logo}
-            alt={name}
-            className="h-10 w-10 object-contain"
-          />
-        </div>
+      {/* Top (logo) */}
+      <div className="flex h-[70px] items-center justify-center">
+        <img
+          src={logo}
+          alt={name}
+          className="max-h-[40px] max-w-[40px] object-contain"
+        />
+      </div>
 
-        <div className="mt-6">
-          <h3 className="text-lg font-bold text-white">{name}</h3>
-          <p className="mt-1 text-sm text-white/60">{country}</p>
-        </div>
+      {/* Bottom (text) */}
+      <div className="mt-6 text-center">
+        <h3 className="text-lg font-bold text-white">{name}</h3>
+        <p className="mt-1 text-sm text-white/60">{country}</p>
       </div>
     </Link>
   );
