@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Image from "next/image";
 
 type Match = {
   id: number;
@@ -68,54 +67,66 @@ const matches: Match[] = [
   },
 ];
 
-function TeamRow({
-  side,
-  team,
+function getInitials(name: string) {
+  return name
+    .split(" ")
+    .map((word) => word[0])
+    .join("")
+    .slice(0, 3)
+    .toUpperCase();
+}
+
+function TeamBadge({
+  name,
   logo,
-  score,
+}: {
+  name: string;
+  logo: string;
+}) {
+  const [broken, setBroken] = useState(false);
+
+  if (broken) {
+    return (
+      <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/10 text-sm font-black text-white">
+        {getInitials(name)}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/10 p-2">
+      <img
+        src={logo}
+        alt={name}
+        className="h-10 w-10 object-contain"
+        onError={() => setBroken(true)}
+      />
+    </div>
+  );
+}
+
+function ScoreInput({
+  value,
   onChange,
 }: {
-  side: "Home" | "Away";
-  team: string;
-  logo: string;
-  score: string;
+  value: string;
   onChange: (value: string) => void;
 }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-4">
-      <div className="mb-3 text-xs uppercase tracking-[0.15em] text-white/45">
-        {side}
-      </div>
-
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex min-w-0 items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/10 p-2">
-            <img
-              src={logo}
-              alt={team}
-              className="h-8 w-8 object-contain"
-            />
-          </div>
-
-          <div className="truncate text-lg font-bold text-white">{team}</div>
-        </div>
-
-        <input
-          type="number"
-          min="0"
-          inputMode="numeric"
-          value={score}
-          onChange={(e) => {
-            const value = e.target.value;
-            if (value === "" || /^\d+$/.test(value)) {
-              onChange(value);
-            }
-          }}
-          className="h-12 w-16 rounded-xl border border-white/10 bg-white/5 text-center text-lg font-bold text-white outline-none transition placeholder:text-white/25 focus:border-emerald-300/40 focus:bg-white/10"
-          placeholder="0"
-        />
-      </div>
-    </div>
+    <input
+      type="number"
+      min="0"
+      inputMode="numeric"
+      value={value}
+      onChange={(e) => {
+        const next = e.target.value;
+        if (next === "" || /^\d+$/.test(next)) {
+          onChange(next);
+        }
+      }}
+      className="h-14 w-16 rounded-2xl border border-white/10 bg-white/5 text-center text-xl font-black text-white outline-none transition placeholder:text-white/25 focus:border-emerald-300/40 focus:bg-white/10"
+      placeholder="0"
+    />
   );
 }
 
@@ -143,48 +154,90 @@ function MatchCard({
         </div>
       </div>
 
-      <div className="mt-6 space-y-4">
-        <TeamRow
-          side="Home"
-          team={match.home}
-          logo={match.homeLogo}
-          score={pick.homeScore}
-          onChange={(value) =>
-            onChange({
-              ...pick,
-              homeScore: value,
-            })
-          }
-        />
+      <div className="mt-6 rounded-[24px] border border-white/10 bg-black/20 px-4 py-5">
+        <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-4">
+          <div className="flex flex-col items-center text-center">
+            <TeamBadge name={match.home} logo={match.homeLogo} />
+            <div className="mt-3 text-sm uppercase tracking-[0.15em] text-white/45">
+              Home
+            </div>
+            <div className="mt-1 text-base font-bold text-white sm:text-lg">
+              {match.home}
+            </div>
+          </div>
 
-        <div className="flex items-center justify-center">
-          <div className="rounded-full border border-white/10 bg-white/5 px-4 py-1 text-xs font-bold tracking-[0.22em] text-white/45">
-            SCORE
+          <div className="flex items-center justify-center pt-6">
+            <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-bold tracking-[0.22em] text-white/45">
+              VS
+            </div>
+          </div>
+
+          <div className="flex flex-col items-center text-center">
+            <TeamBadge name={match.away} logo={match.awayLogo} />
+            <div className="mt-3 text-sm uppercase tracking-[0.15em] text-white/45">
+              Away
+            </div>
+            <div className="mt-1 text-base font-bold text-white sm:text-lg">
+              {match.away}
+            </div>
           </div>
         </div>
 
-        <TeamRow
-          side="Away"
-          team={match.away}
-          logo={match.awayLogo}
-          score={pick.awayScore}
-          onChange={(value) =>
-            onChange({
-              ...pick,
-              awayScore: value,
-            })
-          }
-        />
+        <div className="mt-6 rounded-[22px] border border-cyan-400/10 bg-cyan-400/5 px-4 py-4">
+          <div className="mb-3 text-center text-xs font-semibold uppercase tracking-[0.18em] text-cyan-200">
+            Score Ticker
+          </div>
+
+          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
+            <div className="flex flex-col items-center">
+              <div className="text-xs uppercase tracking-[0.15em] text-white/45">
+                {match.home}
+              </div>
+              <div className="mt-3">
+                <ScoreInput
+                  value={pick.homeScore}
+                  onChange={(value) =>
+                    onChange({
+                      ...pick,
+                      homeScore: value,
+                    })
+                  }
+                />
+              </div>
+            </div>
+
+            <div className="pt-6 text-center text-2xl font-black text-white/40">
+              -
+            </div>
+
+            <div className="flex flex-col items-center">
+              <div className="text-xs uppercase tracking-[0.15em] text-white/45">
+                {match.away}
+              </div>
+              <div className="mt-3">
+                <ScoreInput
+                  value={pick.awayScore}
+                  onChange={(value) =>
+                    onChange({
+                      ...pick,
+                      awayScore: value,
+                    })
+                  }
+                />
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div className="mt-6 rounded-2xl border border-cyan-400/10 bg-cyan-400/5 px-4 py-3">
-        <div className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-200">
-          Prediction
+      <div className="mt-5 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+        <div className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-200">
+          Prediction Preview
         </div>
         <div className="mt-2 text-sm text-white/75">
           {pick.homeScore !== "" && pick.awayScore !== ""
             ? `${match.home} ${pick.homeScore} - ${pick.awayScore} ${match.away}`
-            : "Enter an exact score prediction for both teams."}
+            : "Enter a score for both teams to complete this prediction."}
         </div>
       </div>
     </div>
@@ -194,10 +247,7 @@ function MatchCard({
 export default function PremierLeaguePredictionsPage() {
   const [picks, setPicks] = useState<Record<number, ScorePick>>(
     Object.fromEntries(
-      matches.map((match) => [
-        match.id,
-        { homeScore: "", awayScore: "" },
-      ])
+      matches.map((match) => [match.id, { homeScore: "", awayScore: "" }])
     )
   );
 
@@ -213,7 +263,7 @@ export default function PremierLeaguePredictionsPage() {
   const totalCompleted = useMemo(() => {
     return matches.filter((match) => {
       const pick = picks[match.id];
-      return pick?.homeScore !== "" && pick?.awayScore !== "";
+      return pick.homeScore !== "" && pick.awayScore !== "";
     }).length;
   }, [picks]);
 
@@ -309,7 +359,7 @@ export default function PremierLeaguePredictionsPage() {
                 {matches.map((match) => {
                   const pick = picks[match.id];
                   const complete =
-                    pick?.homeScore !== "" && pick?.awayScore !== "";
+                    pick.homeScore !== "" && pick.awayScore !== "";
 
                   return (
                     <div
