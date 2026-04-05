@@ -108,9 +108,11 @@ function TeamBadge({
 function ScoreInput({
   value,
   onChange,
+  disabled = false,
 }: {
   value: string;
   onChange: (value: string) => void;
+  disabled?: boolean;
 }) {
   return (
     <input
@@ -118,13 +120,14 @@ function ScoreInput({
       min="0"
       inputMode="numeric"
       value={value}
+      disabled={disabled}
       onChange={(e) => {
         const next = e.target.value;
         if (next === "" || /^\d+$/.test(next)) {
           onChange(next);
         }
       }}
-      className="h-14 w-16 rounded-2xl border border-white/10 bg-white/5 text-center text-xl font-black text-white outline-none transition placeholder:text-white/25 focus:border-emerald-300/40 focus:bg-white/10"
+      className="h-14 w-16 rounded-2xl border border-white/10 bg-white/5 text-center text-xl font-black text-white outline-none transition placeholder:text-white/25 focus:border-emerald-300/40 focus:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
       placeholder="0"
     />
   );
@@ -134,10 +137,12 @@ function MatchCard({
   match,
   pick,
   onChange,
+  locked = false,
 }: {
   match: Match;
   pick: ScorePick;
   onChange: (next: ScorePick) => void;
+  locked?: boolean;
 }) {
   return (
     <div className="rounded-[28px] border border-white/10 bg-white/5 p-5 backdrop-blur-xl transition hover:border-white/20 hover:bg-white/[0.07]">
@@ -196,6 +201,7 @@ function MatchCard({
               <div className="mt-3">
                 <ScoreInput
                   value={pick.homeScore}
+                  disabled={locked}
                   onChange={(value) =>
                     onChange({
                       ...pick,
@@ -217,6 +223,7 @@ function MatchCard({
               <div className="mt-3">
                 <ScoreInput
                   value={pick.awayScore}
+                  disabled={locked}
                   onChange={(value) =>
                     onChange({
                       ...pick,
@@ -250,6 +257,9 @@ export default function PremierLeaguePredictionsPage() {
       matches.map((match) => [match.id, { homeScore: "", awayScore: "" }])
     )
   );
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+  const [submitSuccess, setSubmitSuccess] = useState("");
 
   function updatePick(matchId: number, next: ScorePick) {
     setPicks((prev) => ({
@@ -268,6 +278,53 @@ export default function PremierLeaguePredictionsPage() {
   }, [picks]);
 
   const allCompleted = totalCompleted === totalMatches;
+
+  async function handleSubmit() {
+    try {
+      setSubmitError("");
+      setSubmitSuccess("");
+      setSubmitting(true);
+
+      if (!allCompleted) {
+        setSubmitError("Please complete every score prediction first.");
+        return;
+      }
+
+      const payload = matches.map((match) => ({
+        match_id: String(match.id),
+        home_team: match.home,
+        away_team: match.away,
+        predicted_home_score: Number(picks[match.id].homeScore),
+        predicted_away_score: Number(picks[match.id].awayScore),
+      }));
+
+      const res = await fetch("/api/soccer/predictions/submit", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          leagueSlug: "premier-league",
+          matchweekLabel: "Week 1",
+          picks: payload,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data?.error || "Failed to submit predictions");
+      }
+
+      setSubmitSuccess("Predictions submitted successfully.");
+    } catch (error) {
+      setSubmitError(
+        error instanceof Error ? error.message : "Something went wrong"
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   return (
     <main className="min-h-screen bg-[#05070f] text-white">
@@ -304,9 +361,7 @@ export default function PremierLeaguePredictionsPage() {
               <div className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-200">
                 Matchweek
               </div>
-              <div className="mt-3 text-2xl font-bold text-white">
-                Week 1
-              </div>
+              <div className="mt-3 text-2xl font-bold text-white">Week 1</div>
             </div>
 
             <div className="rounded-[26px] border border-white/10 bg-white/5 p-5">
@@ -381,16 +436,29 @@ export default function PremierLeaguePredictionsPage() {
 
               <button
                 type="button"
-                disabled={!allCompleted}
+                onClick={handleSubmit}
+                disabled={!allCompleted || submitting}
                 className={[
                   "mt-6 w-full rounded-2xl px-5 py-4 text-sm font-semibold transition",
-                  allCompleted
+                  allCompleted && !submitting
                     ? "bg-white text-black hover:scale-[1.01]"
                     : "cursor-not-allowed border border-white/10 bg-white/5 text-white/40",
                 ].join(" ")}
               >
-                Submit Predictions
+                {submitting ? "Submitting..." : "Submit Predictions"}
               </button>
+
+              {submitError ? (
+                <div className="mt-3 rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+                  {submitError}
+                </div>
+              ) : null}
+
+              {submitSuccess ? (
+                <div className="mt-3 rounded-2xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+                  {submitSuccess}
+                </div>
+              ) : null}
             </aside>
           </div>
         </div>
