@@ -1,58 +1,132 @@
 "use client";
 
-import { useState } from "react";
-
-type PickOption = "HOME" | "DRAW" | "AWAY";
+import { useMemo, useState } from "react";
+import Image from "next/image";
 
 type Match = {
   id: number;
   home: string;
   away: string;
   kickoff: string;
+  homeLogo: string;
+  awayLogo: string;
+};
+
+type ScorePick = {
+  homeScore: string;
+  awayScore: string;
 };
 
 const matches: Match[] = [
-  { id: 1, home: "Arsenal", away: "Chelsea", kickoff: "Sat • 12:30 PM" },
-  { id: 2, home: "Liverpool", away: "Tottenham", kickoff: "Sat • 3:00 PM" },
-  { id: 3, home: "Manchester City", away: "Newcastle", kickoff: "Sat • 5:30 PM" },
-  { id: 4, home: "Manchester United", away: "Brighton", kickoff: "Sun • 9:00 AM" },
-  { id: 5, home: "Aston Villa", away: "West Ham", kickoff: "Sun • 11:30 AM" },
-  { id: 6, home: "Everton", away: "Fulham", kickoff: "Sun • 2:00 PM" },
+  {
+    id: 1,
+    home: "Arsenal",
+    away: "Chelsea",
+    kickoff: "Sat • 12:30 PM",
+    homeLogo: "https://upload.wikimedia.org/wikipedia/en/5/53/Arsenal_FC.svg",
+    awayLogo: "https://upload.wikimedia.org/wikipedia/en/c/cc/Chelsea_FC.svg",
+  },
+  {
+    id: 2,
+    home: "Liverpool",
+    away: "Tottenham",
+    kickoff: "Sat • 3:00 PM",
+    homeLogo: "https://upload.wikimedia.org/wikipedia/en/0/0c/Liverpool_FC.svg",
+    awayLogo: "https://upload.wikimedia.org/wikipedia/en/b/b4/Tottenham_Hotspur.svg",
+  },
+  {
+    id: 3,
+    home: "Manchester City",
+    away: "Newcastle",
+    kickoff: "Sat • 5:30 PM",
+    homeLogo: "https://upload.wikimedia.org/wikipedia/en/e/eb/Manchester_City_FC_badge.svg",
+    awayLogo: "https://upload.wikimedia.org/wikipedia/en/5/56/Newcastle_United_Logo.svg",
+  },
+  {
+    id: 4,
+    home: "Manchester United",
+    away: "Brighton",
+    kickoff: "Sun • 9:00 AM",
+    homeLogo: "https://upload.wikimedia.org/wikipedia/en/7/7a/Manchester_United_FC_crest.svg",
+    awayLogo: "https://upload.wikimedia.org/wikipedia/en/6/6d/Brighton_%26_Hove_Albion_logo.svg",
+  },
+  {
+    id: 5,
+    home: "Aston Villa",
+    away: "West Ham",
+    kickoff: "Sun • 11:30 AM",
+    homeLogo: "https://upload.wikimedia.org/wikipedia/en/f/f9/Aston_Villa_FC_crest_%282016%29.svg",
+    awayLogo: "https://upload.wikimedia.org/wikipedia/en/c/c2/West_Ham_United_FC_logo.svg",
+  },
+  {
+    id: 6,
+    home: "Everton",
+    away: "Fulham",
+    kickoff: "Sun • 2:00 PM",
+    homeLogo: "https://upload.wikimedia.org/wikipedia/en/7/7c/Everton_FC_logo.svg",
+    awayLogo: "https://upload.wikimedia.org/wikipedia/en/e/eb/Fulham_FC_%28shield%29.svg",
+  },
 ];
 
-function PickButton({
-  label,
-  active,
-  onClick,
+function TeamRow({
+  side,
+  team,
+  logo,
+  score,
+  onChange,
 }: {
-  label: PickOption;
-  active: boolean;
-  onClick: () => void;
+  side: "Home" | "Away";
+  team: string;
+  logo: string;
+  score: string;
+  onChange: (value: string) => void;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={[
-        "rounded-2xl border px-4 py-3 text-sm font-semibold transition",
-        active
-          ? "border-emerald-300/40 bg-emerald-400/15 text-white shadow-[0_0_20px_rgba(16,185,129,0.18)]"
-          : "border-white/10 bg-white/5 text-white/75 hover:border-white/20 hover:bg-white/10 hover:text-white",
-      ].join(" ")}
-    >
-      {label}
-    </button>
+    <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-4">
+      <div className="mb-3 text-xs uppercase tracking-[0.15em] text-white/45">
+        {side}
+      </div>
+
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/10 p-2">
+            <img
+              src={logo}
+              alt={team}
+              className="h-8 w-8 object-contain"
+            />
+          </div>
+
+          <div className="truncate text-lg font-bold text-white">{team}</div>
+        </div>
+
+        <input
+          type="number"
+          min="0"
+          inputMode="numeric"
+          value={score}
+          onChange={(e) => {
+            const value = e.target.value;
+            if (value === "" || /^\d+$/.test(value)) {
+              onChange(value);
+            }
+          }}
+          className="h-12 w-16 rounded-xl border border-white/10 bg-white/5 text-center text-lg font-bold text-white outline-none transition placeholder:text-white/25 focus:border-emerald-300/40 focus:bg-white/10"
+          placeholder="0"
+        />
+      </div>
+    </div>
   );
 }
 
 function MatchCard({
   match,
-  selectedPick,
-  onPick,
+  pick,
+  onChange,
 }: {
   match: Match;
-  selectedPick?: PickOption;
-  onPick: (pick: PickOption) => void;
+  pick: ScorePick;
+  onChange: (next: ScorePick) => void;
 }) {
   return (
     <div className="rounded-[28px] border border-white/10 bg-white/5 p-5 backdrop-blur-xl transition hover:border-white/20 hover:bg-white/[0.07]">
@@ -70,48 +144,47 @@ function MatchCard({
       </div>
 
       <div className="mt-6 space-y-4">
-        <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-4">
-          <div className="text-xs uppercase tracking-[0.15em] text-white/45">
-            Home
-          </div>
-          <div className="mt-1 text-lg font-bold text-white">{match.home}</div>
-        </div>
+        <TeamRow
+          side="Home"
+          team={match.home}
+          logo={match.homeLogo}
+          score={pick.homeScore}
+          onChange={(value) =>
+            onChange({
+              ...pick,
+              homeScore: value,
+            })
+          }
+        />
 
         <div className="flex items-center justify-center">
           <div className="rounded-full border border-white/10 bg-white/5 px-4 py-1 text-xs font-bold tracking-[0.22em] text-white/45">
-            VS
+            SCORE
           </div>
         </div>
 
-        <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-4">
-          <div className="text-xs uppercase tracking-[0.15em] text-white/45">
-            Away
-          </div>
-          <div className="mt-1 text-lg font-bold text-white">{match.away}</div>
-        </div>
+        <TeamRow
+          side="Away"
+          team={match.away}
+          logo={match.awayLogo}
+          score={pick.awayScore}
+          onChange={(value) =>
+            onChange({
+              ...pick,
+              awayScore: value,
+            })
+          }
+        />
       </div>
 
-      <div className="mt-6">
-        <div className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-cyan-200">
-          Choose Prediction
+      <div className="mt-6 rounded-2xl border border-cyan-400/10 bg-cyan-400/5 px-4 py-3">
+        <div className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-200">
+          Prediction
         </div>
-
-        <div className="grid grid-cols-3 gap-3">
-          <PickButton
-            label="HOME"
-            active={selectedPick === "HOME"}
-            onClick={() => onPick("HOME")}
-          />
-          <PickButton
-            label="DRAW"
-            active={selectedPick === "DRAW"}
-            onClick={() => onPick("DRAW")}
-          />
-          <PickButton
-            label="AWAY"
-            active={selectedPick === "AWAY"}
-            onClick={() => onPick("AWAY")}
-          />
+        <div className="mt-2 text-sm text-white/75">
+          {pick.homeScore !== "" && pick.awayScore !== ""
+            ? `${match.home} ${pick.homeScore} - ${pick.awayScore} ${match.away}`
+            : "Enter an exact score prediction for both teams."}
         </div>
       </div>
     </div>
@@ -119,17 +192,32 @@ function MatchCard({
 }
 
 export default function PremierLeaguePredictionsPage() {
-  const [picks, setPicks] = useState<Record<number, PickOption>>({});
+  const [picks, setPicks] = useState<Record<number, ScorePick>>(
+    Object.fromEntries(
+      matches.map((match) => [
+        match.id,
+        { homeScore: "", awayScore: "" },
+      ])
+    )
+  );
 
-  function handlePick(matchId: number, pick: PickOption) {
+  function updatePick(matchId: number, next: ScorePick) {
     setPicks((prev) => ({
       ...prev,
-      [matchId]: pick,
+      [matchId]: next,
     }));
   }
 
   const totalMatches = matches.length;
-  const totalPicked = Object.keys(picks).length;
+
+  const totalCompleted = useMemo(() => {
+    return matches.filter((match) => {
+      const pick = picks[match.id];
+      return pick?.homeScore !== "" && pick?.awayScore !== "";
+    }).length;
+  }, [picks]);
+
+  const allCompleted = totalCompleted === totalMatches;
 
   return (
     <main className="min-h-screen bg-[#05070f] text-white">
@@ -143,12 +231,12 @@ export default function PremierLeaguePredictionsPage() {
             </div>
 
             <h1 className="mt-6 text-4xl font-black uppercase tracking-tight sm:text-5xl lg:text-6xl">
-              Matchweek Predictions
+              Exact Score Predictions
             </h1>
 
             <p className="mt-5 max-w-2xl text-base leading-7 text-white/70 sm:text-lg">
-              Pick the outcome for each featured Premier League match and build
-              your matchweek card.
+              Predict the exact score for each featured Premier League match and
+              build your full matchweek card.
             </p>
           </div>
 
@@ -176,22 +264,20 @@ export default function PremierLeaguePredictionsPage() {
                 Progress
               </div>
               <div className="mt-3 text-2xl font-bold text-white">
-                {totalPicked}/{totalMatches} Picked
+                {totalCompleted}/{totalMatches} Complete
               </div>
             </div>
           </div>
 
-          <div className="mt-12 grid gap-6 xl:grid-cols-[1fr_320px]">
+          <div className="mt-12 grid gap-6 xl:grid-cols-[1fr_340px]">
             <div>
-              <div className="mb-5 flex items-center justify-between">
-                <div>
-                  <div className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-200">
-                    Featured Fixtures
-                  </div>
-                  <h2 className="mt-2 text-2xl font-bold text-white">
-                    Select your predictions
-                  </h2>
+              <div className="mb-5">
+                <div className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-200">
+                  Featured Fixtures
                 </div>
+                <h2 className="mt-2 text-2xl font-bold text-white">
+                  Enter your scorelines
+                </h2>
               </div>
 
               <div className="grid gap-5 lg:grid-cols-2">
@@ -199,8 +285,8 @@ export default function PremierLeaguePredictionsPage() {
                   <MatchCard
                     key={match.id}
                     match={match}
-                    selectedPick={picks[match.id]}
-                    onPick={(pick) => handlePick(match.id, pick)}
+                    pick={picks[match.id]}
+                    onChange={(next) => updatePick(match.id, next)}
                   />
                 ))}
               </div>
@@ -216,12 +302,14 @@ export default function PremierLeaguePredictionsPage() {
               </h2>
 
               <p className="mt-3 text-sm leading-6 text-white/65">
-                Review your selected predictions before submission.
+                Review every exact score before you submit your predictions.
               </p>
 
               <div className="mt-6 space-y-3">
                 {matches.map((match) => {
                   const pick = picks[match.id];
+                  const complete =
+                    pick?.homeScore !== "" && pick?.awayScore !== "";
 
                   return (
                     <div
@@ -232,7 +320,9 @@ export default function PremierLeaguePredictionsPage() {
                         {match.home} vs {match.away}
                       </div>
                       <div className="mt-1 text-sm text-white/55">
-                        {pick ? `Pick: ${pick}` : "No pick yet"}
+                        {complete
+                          ? `${pick.homeScore} - ${pick.awayScore}`
+                          : "No score entered yet"}
                       </div>
                     </div>
                   );
@@ -241,7 +331,13 @@ export default function PremierLeaguePredictionsPage() {
 
               <button
                 type="button"
-                className="mt-6 w-full rounded-2xl bg-white px-5 py-4 text-sm font-semibold text-black transition hover:scale-[1.01]"
+                disabled={!allCompleted}
+                className={[
+                  "mt-6 w-full rounded-2xl px-5 py-4 text-sm font-semibold transition",
+                  allCompleted
+                    ? "bg-white text-black hover:scale-[1.01]"
+                    : "cursor-not-allowed border border-white/10 bg-white/5 text-white/40",
+                ].join(" ")}
               >
                 Submit Predictions
               </button>
