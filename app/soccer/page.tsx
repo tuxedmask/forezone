@@ -1,5 +1,72 @@
 import Link from "next/link";
 
+const leagues = [
+  {
+    name: "Premier League",
+    country: "England",
+    href: "/soccer/predictions/premier-league",
+    logo: "https://commons.wikimedia.org/wiki/Special:Redirect/file/Premier%20League.svg",
+  },
+  {
+    name: "Bundesliga",
+    country: "Germany",
+    href: "/soccer/predictions/bundesliga",
+    logo: "https://commons.wikimedia.org/wiki/Special:Redirect/file/Bundesliga%20logo.svg",
+  },
+  {
+    name: "MLS",
+    country: "United States",
+    href: "/soccer/predictions/mls",
+    logo: "https://commons.wikimedia.org/wiki/Special:Redirect/file/Major%20League%20Soccer%20logo.svg",
+  },
+  {
+    name: "La Liga",
+    country: "Spain",
+    href: "/soccer/predictions/la-liga",
+    logo: "https://commons.wikimedia.org/wiki/Special:Redirect/file/LaLiga%20logo%202023.svg",
+  },
+  {
+    name: "Serie A",
+    country: "Italy",
+    href: "/soccer/predictions/serie-a",
+    logo: "https://commons.wikimedia.org/wiki/Special:Redirect/file/Serie%20A%20logo%202022.svg",
+  },
+];
+
+function LeagueCard({
+  name,
+  country,
+  href,
+  logo,
+}: {
+  name: string;
+  country: string;
+  href: string;
+  logo: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className="group rounded-[24px] border border-white/10 bg-white/5 p-5 transition duration-300 hover:-translate-y-1 hover:border-emerald-300/30 hover:bg-white/[0.08]"
+    >
+      <div className="flex min-h-[140px] flex-col justify-between">
+        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/10 p-2">
+          <img
+            src={logo}
+            alt={name}
+            className="h-10 w-10 object-contain"
+          />
+        </div>
+
+        <div className="mt-6">
+          <h3 className="text-lg font-bold text-white">{name}</h3>
+          <p className="mt-1 text-sm text-white/60">{country}</p>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
 function FeatureCard({
   eyebrow,
   title,
@@ -67,26 +134,20 @@ export default function SoccerPage() {
 
             <p className="mt-6 max-w-2xl text-base leading-7 text-white/70 sm:text-lg">
               Welcome to the soccer side of Fore Zone. Build matchweek
-              predictions, submit daily picks, and track your action across
-              leagues, matches, odds, and books in one clean hub.
+              predictions by league, submit daily picks, and grow the soccer
+              side into a cleaner multi-league hub.
             </p>
 
-            <div className="mt-8 flex flex-wrap gap-3">
-              <span className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/80">
-                League
-              </span>
-              <span className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/80">
-                Match
-              </span>
-              <span className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/80">
-                Pick
-              </span>
-              <span className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/80">
-                Odds
-              </span>
-              <span className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/80">
-                Book
-              </span>
+            <div className="mt-10">
+              <div className="mb-4 text-sm font-semibold uppercase tracking-[0.18em] text-emerald-200">
+                Choose a league for matchweek predictions
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+                {leagues.map((league) => (
+                  <LeagueCard key={league.name} {...league} />
+                ))}
+              </div>
             </div>
 
             <div className="mt-10 flex flex-col gap-4 sm:flex-row">
@@ -110,7 +171,7 @@ export default function SoccerPage() {
             <FeatureCard
               eyebrow="Main Competition"
               title="Matchweek Predictions"
-              description="Enter your predictions for featured matchweeks and follow a more structured competition flow. This section is built for slate-style picks across multiple fixtures."
+              description="Choose a league, open its matchweek page, and build out the predictions flow league by league."
               href="/soccer/predictions"
               buttonLabel="Open Predictions"
               accent="bg-emerald-500/20"
@@ -119,7 +180,7 @@ export default function SoccerPage() {
             <FeatureCard
               eyebrow="Daily Action"
               title="Daily Picks"
-              description="Submit your daily soccer play with the key details that matter: league, match, pick, odds, and book. Track performance in a cleaner day-by-day format."
+              description="Keep soccer daily picks separate from matchweek predictions with their own cleaner submission flow."
               href="/soccer/submit"
               buttonLabel="Open Daily Picks"
               accent="bg-cyan-500/20"
@@ -129,14 +190,14 @@ export default function SoccerPage() {
           <div className="mt-14 grid gap-5 md:grid-cols-3">
             <div className="rounded-[26px] border border-white/10 bg-white/5 p-6">
               <div className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-200">
-                Competitions
+                Leagues
               </div>
               <h3 className="mt-3 text-2xl font-bold text-white">
-                Matchweek format
+                League-based entry
               </h3>
               <p className="mt-3 text-sm leading-6 text-white/65">
-                Run featured prediction rounds on selected slates and build a
-                more community-driven soccer experience.
+                Let users jump straight into the competition they want instead
+                of starting from a generic predictions page.
               </p>
             </div>
 
@@ -145,24 +206,24 @@ export default function SoccerPage() {
                 Submission Flow
               </div>
               <h3 className="mt-3 text-2xl font-bold text-white">
-                Clean pick entry
+                Daily picks stay separate
               </h3>
               <p className="mt-3 text-sm leading-6 text-white/65">
-                Keep daily submissions simple with a clear structure for league,
-                match, pick, odds, and sportsbook.
+                Keep the single-pick flow distinct from the matchweek prediction
+                format so the soccer section stays clean.
               </p>
             </div>
 
             <div className="rounded-[26px] border border-white/10 bg-white/5 p-6">
               <div className="text-xs font-semibold uppercase tracking-[0.18em] text-indigo-200">
-                Growth
+                Expansion
               </div>
               <h3 className="mt-3 text-2xl font-bold text-white">
-                More leagues later
+                Easy to scale
               </h3>
               <p className="mt-3 text-sm leading-6 text-white/65">
-                This hub gives you room to expand into more leagues, more
-                featured slates, and more soccer-focused tracking over time.
+                This setup gives you room to add more leagues, more prediction
+                pages, and more soccer-specific features later.
               </p>
             </div>
           </div>
