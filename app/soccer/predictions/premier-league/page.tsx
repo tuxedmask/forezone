@@ -16,56 +16,13 @@ type ScorePick = {
   awayScore: string;
 };
 
-const matches: Match[] = [
-  {
-    id: 1,
-    home: "Arsenal",
-    away: "Chelsea",
-    kickoff: "Sat • 12:30 PM",
-    homeLogo: "https://upload.wikimedia.org/wikipedia/en/5/53/Arsenal_FC.svg",
-    awayLogo: "https://upload.wikimedia.org/wikipedia/en/c/cc/Chelsea_FC.svg",
-  },
-  {
-    id: 2,
-    home: "Liverpool",
-    away: "Tottenham",
-    kickoff: "Sat • 3:00 PM",
-    homeLogo: "https://upload.wikimedia.org/wikipedia/en/0/0c/Liverpool_FC.svg",
-    awayLogo: "https://upload.wikimedia.org/wikipedia/en/b/b4/Tottenham_Hotspur.svg",
-  },
-  {
-    id: 3,
-    home: "Manchester City",
-    away: "Newcastle",
-    kickoff: "Sat • 5:30 PM",
-    homeLogo: "https://upload.wikimedia.org/wikipedia/en/e/eb/Manchester_City_FC_badge.svg",
-    awayLogo: "https://upload.wikimedia.org/wikipedia/en/5/56/Newcastle_United_Logo.svg",
-  },
-  {
-    id: 4,
-    home: "Manchester United",
-    away: "Brighton",
-    kickoff: "Sun • 9:00 AM",
-    homeLogo: "https://upload.wikimedia.org/wikipedia/en/7/7a/Manchester_United_FC_crest.svg",
-    awayLogo: "https://upload.wikimedia.org/wikipedia/en/6/6d/Brighton_%26_Hove_Albion_logo.svg",
-  },
-  {
-    id: 5,
-    home: "Aston Villa",
-    away: "West Ham",
-    kickoff: "Sun • 11:30 AM",
-    homeLogo: "https://upload.wikimedia.org/wikipedia/en/f/f9/Aston_Villa_FC_crest_%282016%29.svg",
-    awayLogo: "https://upload.wikimedia.org/wikipedia/en/c/c2/West_Ham_United_FC_logo.svg",
-  },
-  {
-    id: 6,
-    home: "Everton",
-    away: "Fulham",
-    kickoff: "Sun • 2:00 PM",
-    homeLogo: "https://upload.wikimedia.org/wikipedia/en/7/7c/Everton_FC_logo.svg",
-    awayLogo: "https://upload.wikimedia.org/wikipedia/en/e/eb/Fulham_FC_%28shield%29.svg",
-  },
-];
+type MatchweekResponse = {
+  leagueSlug: string;
+  leagueName: string;
+  matchweekLabel: string | null;
+  matchday: number | null;
+  matches: Match[];
+};
 
 function getInitials(name: string) {
   return name
@@ -74,6 +31,24 @@ function getInitials(name: string) {
     .join("")
     .slice(0, 3)
     .toUpperCase();
+}
+
+function formatKickoff(isoString: string) {
+  const date = new Date(isoString);
+
+  if (Number.isNaN(date.getTime())) {
+    return isoString;
+  }
+
+  return new Intl.DateTimeFormat("en-CA", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: "America/Toronto",
+  }).format(date);
 }
 
 function TeamBadge({
@@ -85,7 +60,7 @@ function TeamBadge({
 }) {
   const [broken, setBroken] = useState(false);
 
-  if (broken) {
+  if (!logo || broken) {
     return (
       <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/10 text-sm font-black text-white">
         {getInitials(name)}
@@ -138,20 +113,24 @@ function MatchCard({
   pick,
   onChange,
   locked = false,
+  leagueName,
 }: {
   match: Match;
   pick: ScorePick;
   onChange: (next: ScorePick) => void;
   locked?: boolean;
+  leagueName: string;
 }) {
   return (
     <div className="rounded-[28px] border border-white/10 bg-white/5 p-5 backdrop-blur-xl transition hover:border-white/20 hover:bg-white/[0.07]">
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-200">
-            Premier League
+            {leagueName}
           </div>
-          <div className="mt-2 text-sm text-white/55">{match.kickoff}</div>
+          <div className="mt-2 text-sm text-white/55">
+            {formatKickoff(match.kickoff)}
+          </div>
         </div>
 
         <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-white/70">
@@ -252,15 +231,17 @@ function MatchCard({
 }
 
 export default function PremierLeaguePredictionsPage() {
-  const [picks, setPicks] = useState<Record<number, ScorePick>>(
-    Object.fromEntries(
-      matches.map((match) => [match.id, { homeScore: "", awayScore: "" }])
-    )
-  );
+  const [matches, setMatches] = useState<Match[]>([]);
+  const [leagueName, setLeagueName] = useState("Premier League");
+  const [matchweekLabel, setMatchweekLabel] = useState<string | null>(null);
+
+  const [picks, setPicks] = useState<Record<number, ScorePick>>({});
+  const [loadingMatchweek, setLoadingMatchweek] = useState(true);
+  const [loadingEntry, setLoadingEntry] = useState(false);
+
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [submitSuccess, setSubmitSuccess] = useState("");
-  const [loadingEntry, setLoadingEntry] = useState(true);
   const [entryLocked, setEntryLocked] = useState(false);
 
   function updatePick(matchId: number, next: ScorePick) {
@@ -271,14 +252,67 @@ export default function PremierLeaguePredictionsPage() {
   }
 
   useEffect(() => {
-    async function loadExistingEntry() {
+    async function loadMatchweek() {
       try {
-        setLoadingEntry(true);
+        setLoadingMatchweek(true);
         setSubmitError("");
         setSubmitSuccess("");
 
         const res = await fetch(
-          "/api/soccer/predictions/my-entry?leagueSlug=premier-league&matchweekLabel=Week%201"
+          "/api/soccer/predictions/premier-league/matchweek",
+          {
+            cache: "no-store",
+          }
+        );
+
+        const data: MatchweekResponse & { error?: string } = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data?.error || "Failed to load matchweek");
+        }
+
+        const liveMatches = Array.isArray(data.matches) ? data.matches : [];
+
+        setMatches(liveMatches);
+        setLeagueName(data.leagueName || "Premier League");
+        setMatchweekLabel(data.matchweekLabel || null);
+
+        const initialPicks: Record<number, ScorePick> = {};
+        for (const match of liveMatches) {
+          initialPicks[match.id] = { homeScore: "", awayScore: "" };
+        }
+        setPicks(initialPicks);
+      } catch (error) {
+        setSubmitError(
+          error instanceof Error ? error.message : "Failed to load matchweek"
+        );
+      } finally {
+        setLoadingMatchweek(false);
+      }
+    }
+
+    loadMatchweek();
+  }, []);
+
+  useEffect(() => {
+    async function loadExistingEntry() {
+      try {
+        if (!matchweekLabel || matches.length === 0) return;
+
+        setLoadingEntry(true);
+        setSubmitError("");
+        setSubmitSuccess("");
+
+        const params = new URLSearchParams({
+          leagueSlug: "premier-league",
+          matchweekLabel,
+        });
+
+        const res = await fetch(
+          `/api/soccer/predictions/my-entry?${params.toString()}`,
+          {
+            cache: "no-store",
+          }
         );
 
         const data = await res.json();
@@ -305,6 +339,8 @@ export default function PremierLeaguePredictionsPage() {
 
           setEntryLocked(true);
           setSubmitSuccess("Your predictions have already been submitted.");
+        } else {
+          setEntryLocked(false);
         }
       } catch (error) {
         setSubmitError(
@@ -316,18 +352,18 @@ export default function PremierLeaguePredictionsPage() {
     }
 
     loadExistingEntry();
-  }, []);
+  }, [matchweekLabel, matches]);
 
   const totalMatches = matches.length;
 
   const totalCompleted = useMemo(() => {
     return matches.filter((match) => {
       const pick = picks[match.id];
-      return pick.homeScore !== "" && pick.awayScore !== "";
+      return pick?.homeScore !== "" && pick?.awayScore !== "";
     }).length;
-  }, [picks]);
+  }, [matches, picks]);
 
-  const allCompleted = totalCompleted === totalMatches;
+  const allCompleted = totalMatches > 0 && totalCompleted === totalMatches;
 
   async function handleSubmit() {
     try {
@@ -337,6 +373,11 @@ export default function PremierLeaguePredictionsPage() {
 
       if (entryLocked) {
         setSubmitError("You already submitted predictions for this matchweek.");
+        return;
+      }
+
+      if (!matchweekLabel) {
+        setSubmitError("No active matchweek is available right now.");
         return;
       }
 
@@ -360,7 +401,7 @@ export default function PremierLeaguePredictionsPage() {
         },
         body: JSON.stringify({
           leagueSlug: "premier-league",
-          matchweekLabel: "Week 1",
+          matchweekLabel,
           picks: payload,
         }),
       });
@@ -382,6 +423,8 @@ export default function PremierLeaguePredictionsPage() {
     }
   }
 
+  const pageLoading = loadingMatchweek || loadingEntry;
+
   return (
     <main className="min-h-screen bg-[#05070f] text-white">
       <section className="relative isolate overflow-hidden">
@@ -390,7 +433,7 @@ export default function PremierLeaguePredictionsPage() {
         <div className="relative mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
           <div className="max-w-4xl">
             <div className="inline-flex rounded-full border border-emerald-400/20 bg-emerald-500/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-emerald-200">
-              Soccer Zone • Premier League
+              Soccer Zone • {leagueName}
             </div>
 
             <h1 className="mt-6 text-4xl font-black uppercase tracking-tight sm:text-5xl lg:text-6xl">
@@ -398,13 +441,13 @@ export default function PremierLeaguePredictionsPage() {
             </h1>
 
             <p className="mt-5 max-w-2xl text-base leading-7 text-white/70 sm:text-lg">
-              Predict the exact score for each featured Premier League match and
-              build your full matchweek card.
+              Predict the exact score for each featured match and build your
+              full matchweek card.
             </p>
 
-            {loadingEntry ? (
+            {pageLoading ? (
               <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/60">
-                Loading your saved predictions...
+                Loading current gameweek and saved predictions...
               </div>
             ) : null}
           </div>
@@ -415,7 +458,7 @@ export default function PremierLeaguePredictionsPage() {
                 League
               </div>
               <div className="mt-3 text-2xl font-bold text-white">
-                Premier League
+                {leagueName}
               </div>
             </div>
 
@@ -423,7 +466,9 @@ export default function PremierLeaguePredictionsPage() {
               <div className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-200">
                 Matchweek
               </div>
-              <div className="mt-3 text-2xl font-bold text-white">Week 1</div>
+              <div className="mt-3 text-2xl font-bold text-white">
+                {matchweekLabel || "No active week"}
+              </div>
             </div>
 
             <div className="rounded-[26px] border border-white/10 bg-white/5 p-5">
@@ -447,17 +492,24 @@ export default function PremierLeaguePredictionsPage() {
                 </h2>
               </div>
 
-              <div className="grid gap-5 lg:grid-cols-2">
-                {matches.map((match) => (
-                  <MatchCard
-                    key={match.id}
-                    match={match}
-                    pick={picks[match.id]}
-                    onChange={(next) => updatePick(match.id, next)}
-                    locked={entryLocked}
-                  />
-                ))}
-              </div>
+              {matches.length === 0 && !loadingMatchweek ? (
+                <div className="rounded-[28px] border border-white/10 bg-white/5 p-6 text-white/65">
+                  No upcoming matches found for the current gameweek.
+                </div>
+              ) : (
+                <div className="grid gap-5 lg:grid-cols-2">
+                  {matches.map((match) => (
+                    <MatchCard
+                      key={match.id}
+                      match={match}
+                      pick={picks[match.id] || { homeScore: "", awayScore: "" }}
+                      onChange={(next) => updatePick(match.id, next)}
+                      locked={entryLocked}
+                      leagueName={leagueName}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
 
             <aside className="h-fit rounded-[28px] border border-white/10 bg-white/5 p-6 backdrop-blur-xl xl:sticky xl:top-24">
@@ -475,7 +527,10 @@ export default function PremierLeaguePredictionsPage() {
 
               <div className="mt-6 space-y-3">
                 {matches.map((match) => {
-                  const pick = picks[match.id];
+                  const pick = picks[match.id] || {
+                    homeScore: "",
+                    awayScore: "",
+                  };
                   const complete =
                     pick.homeScore !== "" && pick.awayScore !== "";
 
@@ -500,15 +555,25 @@ export default function PremierLeaguePredictionsPage() {
               <button
                 type="button"
                 onClick={handleSubmit}
-                disabled={!allCompleted || submitting || entryLocked || loadingEntry}
+                disabled={
+                  !allCompleted ||
+                  submitting ||
+                  entryLocked ||
+                  pageLoading ||
+                  matches.length === 0
+                }
                 className={[
                   "mt-6 w-full rounded-2xl px-5 py-4 text-sm font-semibold transition",
-                  allCompleted && !submitting && !entryLocked && !loadingEntry
+                  allCompleted &&
+                  !submitting &&
+                  !entryLocked &&
+                  !pageLoading &&
+                  matches.length > 0
                     ? "bg-white text-black hover:scale-[1.01]"
                     : "cursor-not-allowed border border-white/10 bg-white/5 text-white/40",
                 ].join(" ")}
               >
-                {loadingEntry
+                {pageLoading
                   ? "Loading..."
                   : submitting
                   ? "Submitting..."
