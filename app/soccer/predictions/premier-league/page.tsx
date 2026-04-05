@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type Match = {
   id: number;
@@ -260,6 +260,8 @@ export default function PremierLeaguePredictionsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [submitSuccess, setSubmitSuccess] = useState("");
+  const [loadingEntry, setLoadingEntry] = useState(true);
+  const [entryLocked, setEntryLocked] = useState(false);
 
   function updatePick(matchId: number, next: ScorePick) {
     setPicks((prev) => ({
@@ -267,6 +269,54 @@ export default function PremierLeaguePredictionsPage() {
       [matchId]: next,
     }));
   }
+
+  useEffect(() => {
+    async function loadExistingEntry() {
+      try {
+        setLoadingEntry(true);
+        setSubmitError("");
+        setSubmitSuccess("");
+
+        const res = await fetch(
+          "/api/soccer/predictions/my-entry?leagueSlug=premier-league&matchweekLabel=Week%201"
+        );
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data?.error || "Failed to load existing entry");
+        }
+
+        if (data?.entry && Array.isArray(data?.picks)) {
+          setPicks((prev) => {
+            const nextPicks = { ...prev };
+
+            for (const row of data.picks) {
+              const matchId = Number(row.match_id);
+
+              nextPicks[matchId] = {
+                homeScore: String(row.predicted_home_score),
+                awayScore: String(row.predicted_away_score),
+              };
+            }
+
+            return nextPicks;
+          });
+
+          setEntryLocked(true);
+          setSubmitSuccess("Your predictions have already been submitted.");
+        }
+      } catch (error) {
+        setSubmitError(
+          error instanceof Error ? error.message : "Failed to load entry"
+        );
+      } finally {
+        setLoadingEntry(false);
+      }
+    }
+
+    loadExistingEntry();
+  }, []);
 
   const totalMatches = matches.length;
 
@@ -284,6 +334,11 @@ export default function PremierLeaguePredictionsPage() {
       setSubmitError("");
       setSubmitSuccess("");
       setSubmitting(true);
+
+      if (entryLocked) {
+        setSubmitError("You already submitted predictions for this matchweek.");
+        return;
+      }
 
       if (!allCompleted) {
         setSubmitError("Please complete every score prediction first.");
@@ -316,6 +371,7 @@ export default function PremierLeaguePredictionsPage() {
         throw new Error(data?.error || "Failed to submit predictions");
       }
 
+      setEntryLocked(true);
       setSubmitSuccess("Predictions submitted successfully.");
     } catch (error) {
       setSubmitError(
@@ -345,6 +401,12 @@ export default function PremierLeaguePredictionsPage() {
               Predict the exact score for each featured Premier League match and
               build your full matchweek card.
             </p>
+
+            {loadingEntry ? (
+              <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/60">
+                Loading your saved predictions...
+              </div>
+            ) : null}
           </div>
 
           <div className="mt-10 grid gap-5 md:grid-cols-3">
@@ -392,6 +454,7 @@ export default function PremierLeaguePredictionsPage() {
                     match={match}
                     pick={picks[match.id]}
                     onChange={(next) => updatePick(match.id, next)}
+                    locked={entryLocked}
                   />
                 ))}
               </div>
@@ -437,15 +500,21 @@ export default function PremierLeaguePredictionsPage() {
               <button
                 type="button"
                 onClick={handleSubmit}
-                disabled={!allCompleted || submitting}
+                disabled={!allCompleted || submitting || entryLocked || loadingEntry}
                 className={[
                   "mt-6 w-full rounded-2xl px-5 py-4 text-sm font-semibold transition",
-                  allCompleted && !submitting
+                  allCompleted && !submitting && !entryLocked && !loadingEntry
                     ? "bg-white text-black hover:scale-[1.01]"
                     : "cursor-not-allowed border border-white/10 bg-white/5 text-white/40",
                 ].join(" ")}
               >
-                {submitting ? "Submitting..." : "Submit Predictions"}
+                {loadingEntry
+                  ? "Loading..."
+                  : submitting
+                  ? "Submitting..."
+                  : entryLocked
+                  ? "Already Submitted"
+                  : "Submit Predictions"}
               </button>
 
               {submitError ? (
