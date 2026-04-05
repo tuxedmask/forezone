@@ -243,6 +243,7 @@ export default function PremierLeaguePredictionsPage() {
   const [submitError, setSubmitError] = useState("");
   const [submitSuccess, setSubmitSuccess] = useState("");
   const [entryLocked, setEntryLocked] = useState(false);
+  const [weekLocked, setWeekLocked] = useState(false);
 
   function updatePick(matchId: number, next: ScorePick) {
     setPicks((prev) => ({
@@ -293,6 +294,25 @@ export default function PremierLeaguePredictionsPage() {
 
     loadMatchweek();
   }, []);
+
+  useEffect(() => {
+    if (matches.length === 0) {
+      setWeekLocked(false);
+      return;
+    }
+
+    const earliestKickoff = matches
+      .map((match) => new Date(match.kickoff).getTime())
+      .filter((ts) => !Number.isNaN(ts))
+      .sort((a, b) => a - b)[0];
+
+    if (!earliestKickoff) {
+      setWeekLocked(false);
+      return;
+    }
+
+    setWeekLocked(Date.now() >= earliestKickoff);
+  }, [matches]);
 
   useEffect(() => {
     async function loadExistingEntry() {
@@ -364,6 +384,8 @@ export default function PremierLeaguePredictionsPage() {
   }, [matches, picks]);
 
   const allCompleted = totalMatches > 0 && totalCompleted === totalMatches;
+  const pageLoading = loadingMatchweek || loadingEntry;
+  const inputsLocked = entryLocked || weekLocked;
 
   async function handleSubmit() {
     try {
@@ -373,6 +395,11 @@ export default function PremierLeaguePredictionsPage() {
 
       if (entryLocked) {
         setSubmitError("You already submitted predictions for this matchweek.");
+        return;
+      }
+
+      if (weekLocked) {
+        setSubmitError("This matchweek has already started.");
         return;
       }
 
@@ -423,8 +450,6 @@ export default function PremierLeaguePredictionsPage() {
     }
   }
 
-  const pageLoading = loadingMatchweek || loadingEntry;
-
   return (
     <main className="min-h-screen bg-[#05070f] text-white">
       <section className="relative isolate overflow-hidden">
@@ -448,6 +473,12 @@ export default function PremierLeaguePredictionsPage() {
             {pageLoading ? (
               <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/60">
                 Loading current gameweek and saved predictions...
+              </div>
+            ) : null}
+
+            {!pageLoading && weekLocked && !entryLocked ? (
+              <div className="mt-4 rounded-2xl border border-amber-400/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+                This matchweek has already started, so predictions are locked.
               </div>
             ) : null}
           </div>
@@ -504,7 +535,7 @@ export default function PremierLeaguePredictionsPage() {
                       match={match}
                       pick={picks[match.id] || { homeScore: "", awayScore: "" }}
                       onChange={(next) => updatePick(match.id, next)}
-                      locked={entryLocked}
+                      locked={inputsLocked}
                       leagueName={leagueName}
                     />
                   ))}
@@ -560,7 +591,8 @@ export default function PremierLeaguePredictionsPage() {
                   submitting ||
                   entryLocked ||
                   pageLoading ||
-                  matches.length === 0
+                  matches.length === 0 ||
+                  weekLocked
                 }
                 className={[
                   "mt-6 w-full rounded-2xl px-5 py-4 text-sm font-semibold transition",
@@ -568,7 +600,8 @@ export default function PremierLeaguePredictionsPage() {
                   !submitting &&
                   !entryLocked &&
                   !pageLoading &&
-                  matches.length > 0
+                  matches.length > 0 &&
+                  !weekLocked
                     ? "bg-white text-black hover:scale-[1.01]"
                     : "cursor-not-allowed border border-white/10 bg-white/5 text-white/40",
                 ].join(" ")}
@@ -579,6 +612,8 @@ export default function PremierLeaguePredictionsPage() {
                   ? "Submitting..."
                   : entryLocked
                   ? "Already Submitted"
+                  : weekLocked
+                  ? "Matchweek Locked"
                   : "Submit Predictions"}
               </button>
 

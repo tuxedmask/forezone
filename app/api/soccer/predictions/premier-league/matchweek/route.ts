@@ -25,6 +25,7 @@ type FootballDataMatchesResponse = {
     code?: string;
   };
   matches?: FootballDataMatch[];
+  message?: string;
 };
 
 function getApiKey() {
@@ -52,9 +53,7 @@ export async function GET() {
       }
     );
 
-    const data = (await res.json()) as FootballDataMatchesResponse & {
-      message?: string;
-    };
+    const data = (await res.json()) as FootballDataMatchesResponse;
 
     if (!res.ok) {
       return NextResponse.json(
@@ -75,7 +74,6 @@ export async function GET() {
       });
     }
 
-    // Use the earliest scheduled matchday as the active upcoming gameweek
     const upcomingMatchdays = matches
       .map((m) => m.matchday)
       .filter((v): v is number => typeof v === "number")
