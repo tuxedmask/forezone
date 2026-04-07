@@ -299,7 +299,7 @@ export default async function ProfilePage() {
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,_#1a1333_0%,_#0d0a19_45%,_#05030b_100%)] px-6 py-10 text-white">
       <div className="mx-auto max-w-6xl">
-        <h1 className="mb-8 text-3xl font-bold">My Profile</h1>
+        <h1 className="mb-8 text-3xl font-bold">Your Zone</h1>
 
         <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
           <div

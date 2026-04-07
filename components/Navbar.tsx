@@ -202,10 +202,17 @@ export default function Navbar() {
             <SubNavLink
               href="/soccer/admin/bet365-odds"
               label="Set Odds"
+              
               active={isSubActive("/soccer/admin/bet365-odds")}
               onClick={() => setAdminOpen(false)}
             />
           </div>
+          <SubNavLink
+  href="/soccer/admin/results"
+  label="Results"
+  active={isSubActive("/soccer/admin/results")}
+  onClick={() => setAdminOpen(false)}
+/>
         </div>
       ) : null}
     </header>
