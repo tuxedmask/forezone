@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
+    domains: ["crests.football-data.org", "upload.wikimedia.org"],
     remotePatterns: [
       {
         protocol: "https",
@@ -13,6 +14,14 @@ const nextConfig = {
       {
         protocol: "https",
         hostname: "a.espncdn.com",
+      },
+      {
+        protocol: "https",
+        hostname: "crests.football-data.org",
+      },
+      {
+        protocol: "https",
+        hostname: "upload.wikimedia.org",
       },
     ],
   },

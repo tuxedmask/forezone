@@ -1,6 +1,5 @@
 "use client";
 
-import { useMemo, useState } from "react";
 import Image from "next/image";
 import { getNBALogo } from "@/lib/nbaTeams";
 
@@ -51,11 +50,8 @@ function getRowStyle(result: string | null) {
 
 function formatDateTime(value: string | null) {
   if (!value) return "-";
-
   const date = new Date(value);
-
   if (Number.isNaN(date.getTime())) return value;
-
   return date.toLocaleString();
 }
 
@@ -91,10 +87,8 @@ function getPickTypeBadge(pickType: string | null) {
 
 function TeamLogo({
   team,
-  sport,
 }: {
   team: string | null;
-  sport: string;
 }) {
   if (!team) {
     return (
@@ -102,84 +96,25 @@ function TeamLogo({
     );
   }
 
-  if (sport !== "nba") {
-    return (
-      <div className="flex h-7 w-7 items-center justify-center rounded-full border border-[#31294c] bg-[#1a1630] text-[10px] font-bold text-[#cfc8ee]">
-        {team.slice(0, 2).toUpperCase()}
-      </div>
-    );
-  }
-
-  const src = getNBALogo(team);
-
-  if (!src) {
-    return (
-      <div className="flex h-7 w-7 items-center justify-center rounded-full border border-[#31294c] bg-[#1a1630] text-[10px] font-bold text-[#cfc8ee]">
-        {team.slice(0, 2).toUpperCase()}
-      </div>
-    );
-  }
-
   return (
-    <Image
-      src={src}
-      alt={team}
-      width={28}
-      height={28}
-      unoptimized
-      className="rounded-full object-contain"
-    />
+    <div className="flex h-7 w-7 items-center justify-center rounded-full border border-[#31294c] bg-[#1a1630] text-[10px] font-bold text-[#cfc8ee]">
+      {team.slice(0, 2).toUpperCase()}
+    </div>
   );
 }
 
 export default function PickHistoryTabs({ picks }: { picks: PickRow[] }) {
-  const [activeTab, setActiveTab] = useState<"nba" | "soccer">("nba");
-
-  const nbaPicks = useMemo(
-    () => picks.filter((pick) => !pick.sport || pick.sport === "nba"),
-    [picks]
-  );
-
-  const soccerPicks = useMemo(
-    () => picks.filter((pick) => pick.sport === "soccer"),
-    [picks]
-  );
-
-  const visiblePicks = activeTab === "nba" ? nbaPicks : soccerPicks;
-
   return (
     <div className="rounded-2xl border border-[#31294c] bg-[linear-gradient(180deg,#131021,#0b0914)] p-6">
-      <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h3 className="text-xl font-semibold">Pick History</h3>
-
-        <div className="inline-flex w-fit rounded-xl border border-[#31294c] bg-[#0f0c19] p-1">
-          <button
-            onClick={() => setActiveTab("nba")}
-            className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
-              activeTab === "nba"
-                ? "bg-indigo-500/20 text-white shadow-[0_0_20px_rgba(99,102,241,0.18)]"
-                : "text-[#9f96c7] hover:text-white"
-            }`}
-          >
-            NBA ({nbaPicks.length})
-          </button>
-
-          <button
-            onClick={() => setActiveTab("soccer")}
-            className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
-              activeTab === "soccer"
-                ? "bg-indigo-500/20 text-white shadow-[0_0_20px_rgba(99,102,241,0.18)]"
-                : "text-[#9f96c7] hover:text-white"
-            }`}
-          >
-            Soccer ({soccerPicks.length})
-          </button>
-        </div>
+      <div className="mb-5 flex items-center justify-between">
+        <h3 className="text-xl font-semibold">
+          Soccer Pick History ({picks.length})
+        </h3>
       </div>
 
-      {visiblePicks.length === 0 ? (
+      {picks.length === 0 ? (
         <div className="rounded-xl border border-dashed border-[#31294c] p-8 text-center text-[#9f96c7]">
-          No {activeTab.toUpperCase()} picks yet.
+          No soccer picks yet.
         </div>
       ) : (
         <div className="overflow-x-auto">
@@ -189,16 +124,12 @@ export default function PickHistoryTabs({ picks }: { picks: PickRow[] }) {
                 <th className="py-3 pr-4">Game Time</th>
                 <th className="py-3 pr-4">Matchup</th>
                 <th className="py-3 pr-4">Type</th>
-                <th className="py-3 pr-4">Prop</th>
-                <th className="py-3 pr-4">Odds</th>
-                <th className="py-3 pr-4">Book</th>
+                <th className="py-3 pr-4">Prediction</th>
                 <th className="py-3 pr-4 text-right">Result</th>
               </tr>
             </thead>
             <tbody>
-              {visiblePicks.map((pick) => {
-                const sport = pick.sport || "nba";
-
+              {picks.map((pick) => {
                 return (
                   <tr
                     key={pick.id}
@@ -214,7 +145,7 @@ export default function PickHistoryTabs({ picks }: { picks: PickRow[] }) {
                       {pick.away_team && pick.home_team ? (
                         <div className="flex min-w-[240px] items-center gap-3">
                           <div className="flex items-center gap-2">
-                            <TeamLogo team={pick.away_team} sport={sport} />
+                            <TeamLogo team={pick.away_team} />
                             <span className="font-medium text-white">
                               {pick.away_team}
                             </span>
@@ -223,7 +154,7 @@ export default function PickHistoryTabs({ picks }: { picks: PickRow[] }) {
                           <span className="text-[#8e86aa]">@</span>
 
                           <div className="flex items-center gap-2">
-                            <TeamLogo team={pick.home_team} sport={sport} />
+                            <TeamLogo team={pick.home_team} />
                             <span className="font-medium text-white">
                               {pick.home_team}
                             </span>
@@ -246,14 +177,6 @@ export default function PickHistoryTabs({ picks }: { picks: PickRow[] }) {
 
                     <td className="px-4 py-4 font-medium">
                       {pick.prop || "-"}
-                    </td>
-
-                    <td className="px-4 py-4 text-[#d6d3e6]">
-                      {pick.american_odds ?? "-"} / {pick.decimal_odds ?? "-"}
-                    </td>
-
-                    <td className="px-4 py-4 text-[#d6d3e6]">
-                      {pick.bookie || "-"}
                     </td>
 
                     <td className="rounded-r-xl px-4 py-4 text-right">

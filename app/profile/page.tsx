@@ -4,133 +4,145 @@ import { redirect } from "next/navigation";
 import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 import LinkAccountsCard from "./LinkAccountsCard";
-import PickHistoryTabs, { PickRow } from "./PickHistoryTabs";
+import WeeklyPredictionHistory, {
+  WeeklyEntryWithPicks,
+} from "./WeeklyPredictionHistory";
 
 type LinkedAccountRow = {
   provider: "discord" | "twitch";
   email: string | null;
 };
 
-function calculateStats(picks: PickRow[]) {
-  const graded = picks.filter(
-    (pick) =>
-      pick.result === "win" ||
-      pick.result === "loss" ||
-      pick.result === "push"
+type SoccerEntryRow = {
+  id: string;
+  user_id: string;
+  league_slug: string | null;
+  matchweek_label: string | null;
+  status: string | null;
+  created_at: string | null;
+  submitted_at: string | null;
+  total_points: number | null;
+  graded: boolean | null;
+};
+
+type SoccerPredictionPickRow = {
+  id: string;
+  entry_id: string;
+  match_id: string | null;
+  home_team: string | null;
+  away_team: string | null;
+  predicted_home_score: number | null;
+  predicted_away_score: number | null;
+  actual_home_score: number | null;
+  actual_away_score: number | null;
+  points: number | null;
+  correct_score_points: number | null;
+  graded: boolean | null;
+  home_logo?: string | null;
+  away_logo?: string | null;
+  kickoff_time?: string | null;
+};
+
+function getLeagueLabel(slug: string | null) {
+  switch (slug) {
+    case "premier-league":
+      return "Premier League";
+    case "bundesliga":
+      return "Bundesliga";
+    case "mls":
+      return "MLS";
+    case "la-liga":
+      return "La Liga";
+    case "serie-a":
+      return "Serie A";
+    default:
+      return slug || "League";
+  }
+}
+
+function getWeekNumber(label: string | null) {
+  if (!label) return 0;
+  const match = label.match(/\d+/);
+  return match ? Number(match[0]) : 0;
+}
+
+function getProfileGlow(totalPoints: number) {
+  if (totalPoints >= 100) {
+    return "shadow-[0_0_0_1px_rgba(74,222,128,0.10),0_0_35px_rgba(34,197,94,0.14)]";
+  }
+
+  if (totalPoints === 0) {
+    return "shadow-[0_0_0_1px_rgba(165,180,252,0.08),0_0_22px_rgba(99,102,241,0.08)]";
+  }
+
+  return "shadow-[0_0_0_1px_rgba(165,180,252,0.10),0_0_28px_rgba(99,102,241,0.12)]";
+}
+
+function calculateEntryStats(
+  entries: SoccerEntryRow[],
+  picks: SoccerPredictionPickRow[]
+) {
+  const totalEntries = entries.length;
+  const gradedEntries = entries.filter((entry) => entry.graded).length;
+  const pendingEntries = totalEntries - gradedEntries;
+
+  const totalPoints = entries.reduce(
+    (sum, entry) => sum + Number(entry.total_points || 0),
+    0
   );
 
-  const wins = graded.filter((pick) => pick.result === "win").length;
-  const losses = graded.filter((pick) => pick.result === "loss").length;
-  const pushes = graded.filter((pick) => pick.result === "push").length;
+  let bestWeekPoints = 0;
+  let bestWeekLabel = "-";
 
-  const totalDecisions = wins + losses;
-  const winPct =
-    totalDecisions > 0 ? ((wins / totalDecisions) * 100).toFixed(1) : "0.0";
-
-  let currentStreak = 0;
-  let currentStreakType: "W" | "L" | null = null;
-
-  for (const pick of graded) {
-    if (pick.result === "push") continue;
-
-    const type = pick.result === "win" ? "W" : "L";
-
-    if (!currentStreakType) {
-      currentStreakType = type;
-      currentStreak = 1;
-    } else if (currentStreakType === type) {
-      currentStreak++;
-    } else {
-      break;
+  for (const entry of entries) {
+    const points = Number(entry.total_points || 0);
+    if (points > bestWeekPoints) {
+      bestWeekPoints = points;
+      bestWeekLabel = entry.matchweek_label || "-";
     }
   }
 
-  let bestWinStreak = 0;
-  let tempWin = 0;
+  const averagePoints =
+    gradedEntries > 0 ? totalPoints / gradedEntries : 0;
 
-  for (let i = graded.length - 1; i >= 0; i--) {
-    const pick = graded[i];
-
-    if (pick.result === "win") {
-      tempWin++;
-      if (tempWin > bestWinStreak) bestWinStreak = tempWin;
-    } else {
-      tempWin = 0;
-    }
-  }
+  const correctScores = picks.filter(
+    (pick) => Number(pick.correct_score_points || 0) > 0
+  ).length;
 
   return {
-    totalPicks: picks.length,
-    wins,
-    losses,
-    pushes,
-    winPct,
-    currentStreak:
-      currentStreakType && currentStreak > 0
-        ? `${currentStreak}${currentStreakType}`
-        : "-",
-    bestWinStreak,
+    totalEntries,
+    gradedEntries,
+    pendingEntries,
+    totalPoints,
+    bestWeekPoints,
+    bestWeekLabel,
+    averagePoints,
+    correctScores,
   };
 }
 
-function getStatsGlow(winPct: string) {
-  const pct = Number(winPct);
-
-  if (pct >= 55) {
-    return "shadow-[0_0_30px_rgba(34,197,94,0.18)]";
-  }
-
-  if (pct <= 45 && pct > 0) {
-    return "shadow-[0_0_30px_rgba(252,165,165,0.16)]";
-  }
-
-  return "shadow-[0_0_20px_rgba(129,140,248,0.08)]";
-}
-
-function SportStatCard({
-  title,
-  stats,
+function SummaryCard({
+  label,
+  value,
+  subValue,
+  accent = "text-indigo-300",
 }: {
-  title: string;
-  stats: ReturnType<typeof calculateStats>;
+  label: string;
+  value: string;
+  subValue?: string;
+  accent?: string;
 }) {
   return (
-    <div className="rounded-2xl border border-[#2f2949] bg-[#100d19] p-4">
-      <div className="text-xs uppercase tracking-[0.16em] text-[#9f96c7]">
-        {title}
+    <div className="rounded-2xl border border-[#31294c] bg-[linear-gradient(180deg,#151125,#0d0a17)] p-4 shadow-[0_0_18px_rgba(0,0,0,0.12)]">
+      <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#9f96c7]">
+        {label}
       </div>
-
-      <div className="mt-3 text-xl font-bold">
-        <span className="text-green-400">{stats.wins}</span>
-        <span className="mx-1 text-zinc-500">-</span>
-        <span className="text-red-300">{stats.losses}</span>
-        <span className="mx-1 text-zinc-500">-</span>
-        <span className="text-amber-300">{stats.pushes}</span>
+      <div className={`mt-3 text-2xl font-black tracking-tight ${accent}`}>
+        {value}
       </div>
-
-      <div className="mt-1 text-sm text-[#c7c3da]">{stats.winPct}% win rate</div>
-
-      <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-        <div>
-          <div className="text-[#9f96c7]">Picks</div>
-          <div className="mt-1 font-semibold">{stats.totalPicks}</div>
-        </div>
-
-        <div>
-          <div className="text-[#9f96c7]">Current</div>
-          <div className="mt-1 font-semibold">{stats.currentStreak}</div>
-        </div>
-
-        <div>
-          <div className="text-[#9f96c7]">Best Win</div>
-          <div className="mt-1 font-semibold">{stats.bestWinStreak}</div>
-        </div>
-
-        <div>
-          <div className="text-[#9f96c7]">Win %</div>
-          <div className="mt-1 font-semibold">{stats.winPct}%</div>
-        </div>
-      </div>
+      {subValue ? (
+        <div className="mt-1.5 text-sm text-[#c7c3da]">{subValue}</div>
+      ) : null}
     </div>
   );
 }
@@ -147,14 +159,14 @@ export default async function ProfilePage() {
 
   const [
     { data: linkedAccounts, error: linkedAccountsError },
-    { data: picks, error: picksError },
+    { data: entries, error: entriesError },
   ] = await Promise.all([
     supabase
       .from("user_accounts")
       .select("provider, email")
       .eq("user_id", appUserId),
     supabase
-      .from("picks")
+      .from("soccer_prediction_entries")
       .select("*")
       .eq("user_id", appUserId)
       .order("created_at", { ascending: false }),
@@ -164,36 +176,135 @@ export default async function ProfilePage() {
     throw new Error(linkedAccountsError.message);
   }
 
-  if (picksError) {
-    throw new Error(picksError.message);
+  if (entriesError) {
+    throw new Error(entriesError.message);
   }
 
   const linkedAccountsData = (linkedAccounts ?? []) as LinkedAccountRow[];
-  const userPicks = ((picks ?? []) as PickRow[]).map((pick) => ({
-    ...pick,
-    sport: pick.sport || "nba",
-  }));
+  const soccerEntries = (entries ?? []) as SoccerEntryRow[];
+  const entryIds = soccerEntries.map((entry) => entry.id);
 
-  const overallStats = calculateStats(userPicks);
-  const nbaStats = calculateStats(
-    userPicks.filter((pick) => !pick.sport || pick.sport === "nba")
-  );
-  const soccerStats = calculateStats(
-    userPicks.filter((pick) => pick.sport === "soccer")
-  );
+  let entryPicks: SoccerPredictionPickRow[] = [];
 
-  const displayName = session.user.name || userPicks[0]?.user_name || "User";
-  const displayImage = session.user.image || userPicks[0]?.user_image || null;
+  if (entryIds.length > 0) {
+    const { data: picks, error: picksError } = await supabase
+      .from("soccer_prediction_picks")
+      .select("*")
+      .in("entry_id", entryIds);
+
+    if (picksError) {
+      throw new Error(picksError.message);
+    }
+
+    entryPicks = (picks ?? []) as SoccerPredictionPickRow[];
+  }
+
+  const matchCache: Record<
+    string,
+    {
+      home_logo: string | null;
+      away_logo: string | null;
+      kickoff_time: string | null;
+    }
+  > = {};
+
+  for (const entry of soccerEntries) {
+    const leagueSlug = entry.league_slug;
+    const matchweekLabel = entry.matchweek_label;
+
+    if (!leagueSlug || !matchweekLabel) continue;
+
+    const weekMatch = matchweekLabel.match(/\d+/);
+    if (!weekMatch) continue;
+
+    const matchweek = weekMatch[0];
+
+    try {
+      const baseUrl =
+        process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+
+      const res = await fetch(
+        `${baseUrl}/api/soccer/predictions/${leagueSlug}/matchweek?matchweek=${matchweek}`,
+        { cache: "no-store" }
+      );
+
+      if (!res.ok) continue;
+
+      const data = await res.json();
+      const matches = data?.matches || [];
+
+      for (const match of matches) {
+        matchCache[String(match.id)] = {
+          home_logo: match.homeLogo || null,
+          away_logo: match.awayLogo || null,
+          kickoff_time: match.kickoff || null,
+        };
+      }
+    } catch {
+      // ignore match enrichment failures
+    }
+  }
+
+  entryPicks = entryPicks.map((pick) => {
+    const matchData = matchCache[String(pick.match_id)] || {
+      home_logo: null,
+      away_logo: null,
+      kickoff_time: null,
+    };
+
+    return {
+      ...pick,
+      home_logo: matchData.home_logo,
+      away_logo: matchData.away_logo,
+      kickoff_time: matchData.kickoff_time,
+    };
+  });
+
+  const picksByEntry: Record<string, SoccerPredictionPickRow[]> = {};
+
+  for (const pick of entryPicks) {
+    if (!picksByEntry[pick.entry_id]) {
+      picksByEntry[pick.entry_id] = [];
+    }
+    picksByEntry[pick.entry_id].push(pick);
+  }
+
+  const weeklyEntries: WeeklyEntryWithPicks[] = soccerEntries
+    .map((entry) => ({
+      id: entry.id,
+      leagueLabel: getLeagueLabel(entry.league_slug),
+      leagueSlug: entry.league_slug,
+      matchweekLabel: entry.matchweek_label,
+      status: entry.status,
+      createdAt: entry.created_at,
+      submittedAt: entry.submitted_at,
+      totalPoints: Number(entry.total_points || 0),
+      graded: Boolean(entry.graded),
+      picks: (picksByEntry[entry.id] || []).sort((a, b) => {
+        const aTime = a.kickoff_time ? Date.parse(a.kickoff_time) : Number.MAX_SAFE_INTEGER;
+        const bTime = b.kickoff_time ? Date.parse(b.kickoff_time) : Number.MAX_SAFE_INTEGER;
+
+        if (aTime !== bTime) return aTime - bTime;
+
+        return String(a.home_team || "").localeCompare(String(b.home_team || ""));
+      }),
+    }))
+    .sort((a, b) => getWeekNumber(a.matchweekLabel) - getWeekNumber(b.matchweekLabel));
+
+  const stats = calculateEntryStats(soccerEntries, entryPicks);
+
+  const displayName = session.user.name || "User";
+  const displayImage = session.user.image || null;
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,_#1a1333_0%,_#0d0a19_45%,_#05030b_100%)] px-6 py-10 text-white">
       <div className="mx-auto max-w-6xl">
         <h1 className="mb-8 text-3xl font-bold">My Profile</h1>
 
-        <div className="grid gap-6 lg:grid-cols-[340px_1fr]">
+        <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
           <div
-            className={`rounded-3xl border border-[#31294c] bg-[linear-gradient(180deg,#131021,#0b0914)] p-6 transition-all duration-300 ${getStatsGlow(
-              overallStats.winPct
+            className={`rounded-[28px] border border-[#31294c] bg-[linear-gradient(180deg,#151125,#0d0a17)] p-6 transition-all duration-300 ${getProfileGlow(
+              stats.totalPoints
             )}`}
           >
             <div className="flex flex-col items-center text-center">
@@ -221,32 +332,65 @@ export default async function ProfilePage() {
                   : "Connected account"}
               </p>
 
-              <div className="mt-5 w-full rounded-2xl border border-[#31294c] bg-[#110f1b] px-4 py-4 text-center">
-                <div className="text-xs uppercase tracking-[0.2em] text-[#9f96c7]">
-                  Overall Record
+              <div className="mt-5 w-full rounded-2xl border border-[#31294c] bg-[linear-gradient(180deg,#120f1d,#0e0b18)] px-4 py-5 text-center shadow-[0_0_18px_rgba(0,0,0,0.12)]">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#9f96c7]">
+                  Soccer Prediction Summary
                 </div>
-                <div className="mt-2 text-2xl font-bold">
-                  <span className="text-green-400">{overallStats.wins}</span>
-                  <span className="mx-1 text-zinc-500">-</span>
-                  <span className="text-red-300">{overallStats.losses}</span>
-                  <span className="mx-1 text-zinc-500">-</span>
-                  <span className="text-amber-300">{overallStats.pushes}</span>
+                <div className="mt-2 text-4xl font-black tracking-tight text-indigo-300">
+                  {stats.totalPoints.toFixed(2)}
                 </div>
-                <div className="mt-1 text-sm text-[#c7c3da]">
-                  {overallStats.winPct}% win rate
+                <div className="mt-1.5 text-sm text-[#c7c3da]">
+                  Total points across all matchweeks
                 </div>
               </div>
             </div>
 
-            <div className="mt-6 space-y-3">
-              <SportStatCard title="NBA Record" stats={nbaStats} />
-              <SportStatCard title="Soccer Record" stats={soccerStats} />
+            <div className="mt-6 grid gap-3">
+              <SummaryCard
+                label="Entries"
+                value={String(stats.totalEntries)}
+                subValue={`${stats.gradedEntries} graded / ${stats.pendingEntries} pending`}
+                accent="text-white"
+              />
+
+              <SummaryCard
+                label="Best Week"
+                value={stats.bestWeekLabel}
+                subValue={`${stats.bestWeekPoints.toFixed(2)} pts`}
+                accent="text-indigo-300"
+              />
+
+              <SummaryCard
+                label="Correct Scores"
+                value={String(stats.correctScores)}
+                subValue="Exact score hits across all matchweeks"
+                accent="text-emerald-300"
+              />
+
+              <SummaryCard
+                label="Avg. Graded Week"
+                value={stats.averagePoints.toFixed(2)}
+                accent="text-cyan-300"
+              />
+            </div>
+
+            <div className="mt-6 rounded-2xl border border-[#31294c] bg-[linear-gradient(180deg,#120f1d,#0e0b18)] p-4 shadow-[0_0_18px_rgba(0,0,0,0.12)]">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#9f96c7]">
+                Current Focus
+              </div>
+              <div className="mt-3 text-lg font-semibold text-white">
+                Soccer predictions
+              </div>
+              <p className="mt-2 text-sm text-[#c7c3da]">
+                Weekly score predictions, points, and graded results are the
+                main focus right now.
+              </p>
             </div>
 
             <LinkAccountsCard accounts={linkedAccountsData} />
           </div>
 
-          <PickHistoryTabs picks={userPicks} />
+          <WeeklyPredictionHistory entries={weeklyEntries} />
         </div>
       </div>
     </main>

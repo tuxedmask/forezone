@@ -3,6 +3,30 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 
+type IncomingPick = {
+  match_id: string;
+  home_team: string;
+  away_team: string;
+  predicted_home_score: number;
+  predicted_away_score: number;
+  kickoff?: string | null;
+
+  btts_yes_odds?: number | null;
+  btts_no_odds?: number | null;
+  over_2_5_odds?: number | null;
+  under_2_5_odds?: number | null;
+  home_win_odds?: number | null;
+  draw_odds?: number | null;
+  away_win_odds?: number | null;
+};
+
+function hasMatchStarted(kickoff?: string | null) {
+  if (!kickoff) return false;
+  const ts = new Date(kickoff).getTime();
+  if (Number.isNaN(ts)) return false;
+  return Date.now() >= ts;
+}
+
 export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
@@ -23,84 +47,124 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { leagueSlug, matchweekLabel, picks } = body ?? {};
 
-    if (
-      !leagueSlug ||
-      !matchweekLabel ||
-      !Array.isArray(picks) ||
-      picks.length === 0
-    ) {
+    if (!leagueSlug || !matchweekLabel || !Array.isArray(picks)) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
       );
     }
 
-    for (const pick of picks) {
-      if (
-        !pick?.match_id ||
-        !pick?.home_team ||
-        !pick?.away_team ||
-        pick?.predicted_home_score === undefined ||
-        pick?.predicted_away_score === undefined
-      ) {
-        return NextResponse.json(
-          { error: "Invalid pick payload" },
-          { status: 400 }
-        );
-      }
-    }
+    // 🔥 DO NOT BLOCK ENTIRE REQUEST ANYMORE
 
-    const { data: entry, error: entryError } = await supabase
+    // 1) Get or create entry
+    const { data: existingEntry } = await supabase
       .from("soccer_prediction_entries")
-      .insert({
-        user_id: appUserId,
-        league_slug: String(leagueSlug),
-        matchweek_label: String(matchweekLabel),
-        status: "submitted",
-        submitted_at: new Date().toISOString(),
-      })
-      .select()
-      .single();
+      .select("id, graded")
+      .eq("user_id", appUserId)
+      .eq("league_slug", leagueSlug)
+      .eq("matchweek_label", matchweekLabel)
+      .maybeSingle();
 
-    if (entryError || !entry) {
-      const message =
-        entryError?.message?.includes("soccer_prediction_entries_user_league_week_idx")
-          ? "You already submitted predictions for this matchweek."
-          : entryError?.message || "Failed to create prediction entry";
-
-      return NextResponse.json({ error: message }, { status: 400 });
+    if (existingEntry?.graded) {
+      return NextResponse.json(
+        { error: "This matchweek has already been graded." },
+        { status: 400 }
+      );
     }
 
-    const rows = picks.map((pick: any) => ({
-      entry_id: entry.id,
-      match_id: String(pick.match_id),
-      home_team: String(pick.home_team),
-      away_team: String(pick.away_team),
-      predicted_home_score: Number(pick.predicted_home_score),
-      predicted_away_score: Number(pick.predicted_away_score),
-    }));
+    let entryId = existingEntry?.id;
 
-    const { error: picksError } = await supabase
+    if (!entryId) {
+      const { data } = await supabase
+        .from("soccer_prediction_entries")
+        .insert({
+          user_id: appUserId,
+          league_slug: leagueSlug,
+          matchweek_label: matchweekLabel,
+          status: "submitted",
+          submitted_at: new Date().toISOString(),
+          graded: false,
+        })
+        .select("id")
+        .single();
+
+      entryId = data?.id;
+    }
+
+    // 2) load existing picks
+    const { data: existingPicks } = await supabase
       .from("soccer_prediction_picks")
-      .insert(rows);
+      .select("id, match_id, graded")
+      .eq("entry_id", entryId);
 
-    if (picksError) {
-      return NextResponse.json(
-        { error: picksError.message || "Failed to save picks" },
-        { status: 500 }
-      );
+    const map = new Map<string, any>();
+    existingPicks?.forEach((p) => map.set(String(p.match_id), p));
+
+    let updated = 0;
+    let inserted = 0;
+    let skipped = 0;
+
+    for (const pick of picks as IncomingPick[]) {
+      const started = hasMatchStarted(pick.kickoff);
+
+      const existing = map.get(String(pick.match_id));
+
+      const base = {
+        entry_id: entryId,
+        match_id: pick.match_id,
+        home_team: pick.home_team,
+        away_team: pick.away_team,
+        predicted_home_score: pick.predicted_home_score,
+        predicted_away_score: pick.predicted_away_score,
+
+        btts_yes_odds: pick.btts_yes_odds ?? 0,
+        btts_no_odds: pick.btts_no_odds ?? 0,
+        over_2_5_odds: pick.over_2_5_odds ?? 0,
+        under_2_5_odds: pick.under_2_5_odds ?? 0,
+        home_win_odds: pick.home_win_odds ?? 0,
+        draw_odds: pick.draw_odds ?? 0,
+        away_win_odds: pick.away_win_odds ?? 0,
+      };
+
+      // 🔒 IF MATCH STARTED → SKIP
+      if (started) {
+        skipped++;
+        continue;
+      }
+
+      // ❌ if already graded → skip
+      if (existing?.graded) {
+        skipped++;
+        continue;
+      }
+
+      // insert
+      if (!existing) {
+        await supabase.from("soccer_prediction_picks").insert({
+          ...base,
+          points: 0,
+          graded: false,
+        });
+        inserted++;
+      } else {
+        await supabase
+          .from("soccer_prediction_picks")
+          .update(base)
+          .eq("id", existing.id);
+
+        updated++;
+      }
     }
 
     return NextResponse.json({
       success: true,
-      entryId: entry.id,
+      updated,
+      inserted,
+      skipped,
     });
-  } catch (error) {
+  } catch (e) {
     return NextResponse.json(
-      {
-        error:
-          error instanceof Error ? error.message : "Unknown server error",
-      },
+      { error: "Server error" },
       { status: 500 }
     );
   }

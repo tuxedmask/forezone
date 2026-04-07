@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { getNBALogo } from "@/lib/nbaTeams";
+import AutoGradeSoccerButton from "./AutoGradeSoccerButton";
 
 type Pick = {
   id: number;
