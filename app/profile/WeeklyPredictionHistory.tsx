@@ -131,7 +131,7 @@ function TeamDisplay({
   logo?: string | null;
 }) {
   const fallbackLogo = getTeamLogo(team);
-  const finalLogo = logo || fallbackLogo;
+  const [imgSrc, setImgSrc] = useState<string | null>(logo || fallbackLogo);
 
   return (
     <div className="flex flex-col items-center text-center">
@@ -142,11 +142,18 @@ function TeamDisplay({
             : "border-cyan-400/25 bg-cyan-500/10"
         }`}
       >
-        {finalLogo ? (
+        {imgSrc ? (
           <img
-            src={finalLogo}
+            src={imgSrc}
             alt={team || "team"}
             className="h-[72%] w-[72%] object-contain"
+            onError={() => {
+              if (imgSrc !== fallbackLogo && fallbackLogo) {
+                setImgSrc(fallbackLogo);
+              } else {
+                setImgSrc(null);
+              }
+            }}
           />
         ) : (
           <span className="text-xs font-black tracking-wide text-white">

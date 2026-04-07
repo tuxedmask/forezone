@@ -483,7 +483,7 @@ function MatchCard({
           <div className="mt-2.5">
             <div className="flex items-center justify-center rounded-[18px] border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
               <span className="text-sm font-semibold text-emerald-200">
-                Projected if correct:
+                Projected:
               </span>
               <span className="ml-2 text-lg font-black text-white">
                 {projectedPoints.total}

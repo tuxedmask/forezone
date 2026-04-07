@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 import LinkAccountsCard from "./LinkAccountsCard";
@@ -220,13 +221,22 @@ export default async function ProfilePage() {
     const matchweek = weekMatch[0];
 
     try {
-      const baseUrl =
-        process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+      const headerStore = await headers();
+const host = headerStore.get("host");
+const protocol = host?.includes("localhost") ? "http" : "https";
 
-      const res = await fetch(
-        `${baseUrl}/api/soccer/predictions/${leagueSlug}/matchweek?matchweek=${matchweek}`,
-        { cache: "no-store" }
-      );
+const baseUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  process.env.VERCEL_URL?.replace(/^https?:\/\//, "")
+    ? `${protocol}://${process.env.VERCEL_URL?.replace(/^https?:\/\//, "")}`
+    : host
+    ? `${protocol}://${host}`
+    : "http://localhost:3000";
+
+const res = await fetch(
+  `${baseUrl}/api/soccer/predictions/${leagueSlug}/matchweek?matchweek=${matchweek}`,
+  { cache: "no-store" }
+);
 
       if (!res.ok) continue;
 
