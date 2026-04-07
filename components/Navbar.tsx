@@ -197,24 +197,24 @@ export default function Navbar() {
       ) : null}
 
       {adminOpen && isAdmin ? (
-        <div className="border-t border-white/5 bg-gradient-to-b from-emerald-500/[0.07] to-white/[0.015]">
-          <div className="mx-auto flex max-w-7xl items-center gap-2 overflow-x-auto px-4 py-3 sm:px-6 lg:px-8 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-            <SubNavLink
-              href="/soccer/admin/bet365-odds"
-              label="Set Odds"
-              
-              active={isSubActive("/soccer/admin/bet365-odds")}
-              onClick={() => setAdminOpen(false)}
-            />
-          </div>
-          <SubNavLink
-  href="/soccer/admin/results"
-  label="Results"
-  active={isSubActive("/soccer/admin/results")}
-  onClick={() => setAdminOpen(false)}
-/>
-        </div>
-      ) : null}
+  <div className="border-t border-white/5 bg-gradient-to-b from-emerald-500/[0.07] to-white/[0.015]">
+    <div className="mx-auto flex max-w-7xl items-center gap-2 overflow-x-auto px-4 py-3 sm:px-6 lg:px-8">
+      <SubNavLink
+        href="/soccer/admin/bet365-odds"
+        label="Set Odds"
+        active={isSubActive("/soccer/admin/bet365-odds")}
+        onClick={() => setAdminOpen(false)}
+      />
+
+      <SubNavLink
+        href="/soccer/admin/results"
+        label="Results"
+        active={isSubActive("/soccer/admin/results")}
+        onClick={() => setAdminOpen(false)}
+      />
+    </div>
+  </div>
+) : null}
     </header>
   );
 }
