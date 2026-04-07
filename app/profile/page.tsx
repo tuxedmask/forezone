@@ -200,6 +200,14 @@ export default async function ProfilePage() {
     entryPicks = (picks ?? []) as SoccerPredictionPickRow[];
   }
 
+  const matchIds = [
+    ...new Set(
+      entryPicks
+        .map((pick) => pick.match_id)
+        .filter((id): id is string => Boolean(id))
+    ),
+  ];
+
   const matchCache: Record<
     string,
     {
@@ -209,49 +217,22 @@ export default async function ProfilePage() {
     }
   > = {};
 
-  for (const entry of soccerEntries) {
-    const leagueSlug = entry.league_slug;
-    const matchweekLabel = entry.matchweek_label;
+  if (matchIds.length > 0) {
+    const { data: fixtureRows, error: fixturesError } = await supabase
+      .from("soccer_fixtures")
+      .select("match_id, home_logo, away_logo, kickoff")
+      .in("match_id", matchIds);
 
-    if (!leagueSlug || !matchweekLabel) continue;
+    if (fixturesError) {
+      throw new Error(fixturesError.message);
+    }
 
-    const weekMatch = matchweekLabel.match(/\d+/);
-    if (!weekMatch) continue;
-
-    const matchweek = weekMatch[0];
-
-    try {
-      const headerStore = await headers();
-const host = headerStore.get("host");
-const protocol = host?.includes("localhost") ? "http" : "https";
-
-const baseUrl =
-  process.env.NEXT_PUBLIC_SITE_URL ||
-  process.env.VERCEL_URL?.replace(/^https?:\/\//, "")
-    ? `${protocol}://${process.env.VERCEL_URL?.replace(/^https?:\/\//, "")}`
-    : host
-    ? `${protocol}://${host}`
-    : "http://localhost:3000";
-
-const res = await fetch(
-  `${baseUrl}/api/soccer/predictions/${leagueSlug}/matchweek?matchweek=${matchweek}`,
-  { cache: "no-store" }
-);
-
-      if (!res.ok) continue;
-
-      const data = await res.json();
-      const matches = data?.matches || [];
-
-      for (const match of matches) {
-        matchCache[String(match.id)] = {
-          home_logo: match.homeLogo || null,
-          away_logo: match.awayLogo || null,
-          kickoff_time: match.kickoff || null,
-        };
-      }
-    } catch {
-      // ignore match enrichment failures
+    for (const fixture of fixtureRows || []) {
+      matchCache[String(fixture.match_id)] = {
+        home_logo: fixture.home_logo || null,
+        away_logo: fixture.away_logo || null,
+        kickoff_time: fixture.kickoff || null,
+      };
     }
   }
 
@@ -266,7 +247,7 @@ const res = await fetch(
       ...pick,
       home_logo: matchData.home_logo,
       away_logo: matchData.away_logo,
-      kickoff_time: matchData.kickoff_time,
+      kickoff_time: matchData.kickoff,
     };
   });
 
