@@ -82,7 +82,10 @@ function normalizeMatchweekOptions(
   if (Array.isArray(availableMatchweeks)) {
     for (const item of availableMatchweeks) {
       if (typeof item === "string") {
-        normalized.push({ value: item, label: item });
+        normalized.push({
+          value: item,
+          label: item,
+        });
       } else if (item?.value && item?.label) {
         normalized.push(item);
       }
@@ -205,7 +208,6 @@ function ScoreInput({
         className="absolute inset-x-0 bottom-0 h-1/2 bg-transparent transition hover:bg-white/5"
         aria-label="Decrease score"
       />
-
       <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
         <div className="text-[9px] font-bold uppercase tracking-[0.18em] text-white/20">
           ▲
@@ -232,6 +234,7 @@ function ResultCard({
 }) {
   const homeShort = getShortTeamName(match.home);
   const awayShort = getShortTeamName(match.away);
+  const hasResult = row.home_score !== "" && row.away_score !== "";
 
   return (
     <div className="relative overflow-hidden rounded-[26px] border border-white/10 bg-white/5 p-4 backdrop-blur-xl transition hover:border-emerald-400/20 hover:bg-white/[0.07]">
@@ -241,6 +244,18 @@ function ResultCard({
         </div>
         <div className="mt-1.5 text-sm text-white/55">
           {formatKickoff(match.kickoff)}
+        </div>
+
+        <div className="mt-2 inline-flex rounded-full border px-3 py-1 text-[11px] font-semibold">
+          {hasResult ? (
+            <span className="rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-1 text-emerald-200">
+              Ready
+            </span>
+          ) : (
+            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-white/60">
+              Empty
+            </span>
+          )}
         </div>
       </div>
 
@@ -323,6 +338,7 @@ export default function AdminSoccerResultsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [grading, setGrading] = useState(false);
+  const [resetting, setResetting] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -383,8 +399,8 @@ export default function AdminSoccerResultsPage() {
         }
 
         const resultsRes = await fetch(
-          `/api/admin/soccer-results${
-            params.toString() ? `?${params.toString()}` : ""
+          `/api/admin/soccer-results?leagueSlug=premier-league${
+            params.toString() ? `&${params.toString()}` : ""
           }`,
           { cache: "no-store" }
         );
@@ -429,6 +445,12 @@ export default function AdminSoccerResultsPage() {
       .filter((item) => Boolean(item.row));
   }, [matches, rows]);
 
+  const completedCount = useMemo(() => {
+    return orderedRows.filter(
+      ({ row }) => row.home_score !== "" && row.away_score !== ""
+    ).length;
+  }, [orderedRows]);
+
   function updateRow(
     matchId: string,
     next: { home_score: string; away_score: string }
@@ -449,9 +471,7 @@ export default function AdminSoccerResultsPage() {
       setMessage("");
 
       const payload = orderedRows
-        .filter(
-          ({ row }) => row.home_score !== "" && row.away_score !== ""
-        )
+        .filter(({ row }) => row.home_score !== "" && row.away_score !== "")
         .map(({ row }) => ({
           ...row,
           home_score: Number(row.home_score),
@@ -491,9 +511,7 @@ export default function AdminSoccerResultsPage() {
       setMessage("");
 
       const completedRows = orderedRows
-        .filter(
-          ({ row }) => row.home_score !== "" && row.away_score !== ""
-        )
+        .filter(({ row }) => row.home_score !== "" && row.away_score !== "")
         .map(({ row }) => ({
           match_id: row.match_id,
           actual_home_score: Number(row.home_score),
@@ -536,6 +554,60 @@ export default function AdminSoccerResultsPage() {
     }
   }
 
+  async function handleResetWeek() {
+    try {
+      if (!matchweekLabel) {
+        throw new Error("No active matchweek selected.");
+      }
+
+      const confirmed = window.confirm(
+        `Reset ${matchweekLabel}? This will clear saved results and grading for that week.`
+      );
+
+      if (!confirmed) return;
+
+      setResetting(true);
+      setError("");
+      setMessage("");
+
+      const res = await fetch("/api/admin/reset-soccer-week", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          leagueSlug: "premier-league",
+          matchweekLabel,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data?.error || "Failed to reset week");
+      }
+
+      const clearedRows: Record<string, ResultRow> = {};
+      for (const match of matches) {
+        clearedRows[String(match.id)] = {
+          match_id: String(match.id),
+          home_team: match.home,
+          away_team: match.away,
+          kickoff: match.kickoff,
+          home_score: "",
+          away_score: "",
+        };
+      }
+
+      setRows(clearedRows);
+      setMessage(`Reset complete for ${matchweekLabel}.`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to reset week");
+    } finally {
+      setResetting(false);
+    }
+  }
+
   return (
     <main className="min-h-screen bg-[#05070f] px-4 py-10 text-white sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl">
@@ -549,13 +621,13 @@ export default function AdminSoccerResultsPage() {
           </h1>
 
           <p className="mt-3 max-w-2xl text-white/65">
-            Enter the final score for each match, save the results, then run grading
-            for the selected week.
+            Enter final scores, save them, grade the week, or reset the week back
+            to blank.
           </p>
         </div>
 
-        <div className="mb-6 grid gap-4 lg:grid-cols-[1fr_auto_auto]">
-          <div className="rounded-[24px] border border-white/10 bg-white/5 p-4">
+        <div className="mb-6 rounded-[24px] border border-white/10 bg-white/5 p-4">
+          <div className="grid gap-4 lg:grid-cols-[1fr_auto_auto_auto]">
             <div className="grid gap-4 md:grid-cols-2">
               <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-200">
@@ -588,25 +660,63 @@ export default function AdminSoccerResultsPage() {
                 </select>
               </div>
             </div>
+
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving || loading || orderedRows.length === 0}
+              className="rounded-[24px] border border-cyan-400/25 bg-cyan-500/10 px-6 py-4 text-sm font-bold uppercase tracking-[0.18em] text-cyan-100 transition hover:bg-cyan-500/15 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {saving ? "Saving..." : "Save Results"}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleGrade}
+              disabled={grading || loading || orderedRows.length === 0}
+              className="rounded-[24px] border border-emerald-400/25 bg-emerald-500/15 px-6 py-4 text-sm font-bold uppercase tracking-[0.18em] text-emerald-100 transition hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {grading ? "Grading..." : "Grade Week"}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleResetWeek}
+              disabled={resetting || loading || orderedRows.length === 0}
+              className="rounded-[24px] border border-red-400/25 bg-red-500/10 px-6 py-4 text-sm font-bold uppercase tracking-[0.18em] text-red-100 transition hover:bg-red-500/15 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {resetting ? "Resetting..." : "Reset Week"}
+            </button>
+          </div>
+        </div>
+
+        <div className="mb-5 grid gap-4 md:grid-cols-3">
+          <div className="rounded-2xl border border-white/10 bg-white/5 px-5 py-4">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/45">
+              Active Week
+            </div>
+            <div className="mt-2 text-xl font-black text-white">
+              {matchweekLabel || "—"}
+            </div>
           </div>
 
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={saving || loading || orderedRows.length === 0}
-            className="rounded-[24px] border border-cyan-400/25 bg-cyan-500/10 px-6 py-4 text-sm font-bold uppercase tracking-[0.18em] text-cyan-100 transition hover:bg-cyan-500/15 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {saving ? "Saving..." : "Save Results"}
-          </button>
+          <div className="rounded-2xl border border-white/10 bg-white/5 px-5 py-4">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/45">
+              Matches
+            </div>
+            <div className="mt-2 text-xl font-black text-white">
+              {orderedRows.length}
+            </div>
+          </div>
 
-          <button
-            type="button"
-            onClick={handleGrade}
-            disabled={grading || loading || orderedRows.length === 0}
-            className="rounded-[24px] border border-emerald-400/25 bg-emerald-500/15 px-6 py-4 text-sm font-bold uppercase tracking-[0.18em] text-emerald-100 transition hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {grading ? "Grading..." : "Grade Week"}
-          </button>
+          <div className="rounded-2xl border border-white/10 bg-white/5 px-5 py-4">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/45">
+              Results Entered
+            </div>
+            <div className="mt-2 text-xl font-black text-white">
+              {completedCount}
+            </div>
+          </div>
         </div>
 
         {loading ? (

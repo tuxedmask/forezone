@@ -78,10 +78,12 @@ function getWinPctValue(row: LeaderboardRow) {
 }
 
 function getPointsValue(row: LeaderboardRow) {
-  if (row.totalPoints !== undefined && row.totalPoints !== null) {
-    return Number(row.totalPoints);
-  }
-  return Number(row.units ?? 0);
+  const value =
+    row.totalPoints !== undefined && row.totalPoints !== null
+      ? Number(row.totalPoints)
+      : Number(row.units ?? 0);
+
+  return Math.round(value * 100) / 100;
 }
 
 function getRecordValue(row: LeaderboardRow) {
@@ -403,7 +405,7 @@ export default function LeaderboardPage() {
                     </div>
 
                     <div className="mt-5 grid grid-cols-2 gap-3">
-                      <Stat label="Points" value={getPointsValue(p)} />
+                      <Stat label="Points" value={getPointsValue(p).toFixed(2)} />
                       <Stat label="Win %" value={`${getWinPctValue(p)}%`} />
                       <Stat label="Correct" value={p.correctScores ?? 0} />
                       <Stat label="Pending" value={p.pending ?? 0} />
@@ -461,7 +463,7 @@ export default function LeaderboardPage() {
                       </div>
 
                       <div className="grid grid-cols-2 gap-3 sm:grid-cols-5 lg:mt-0">
-                        <Stat label="Pts" value={getPointsValue(currentUserRow)} />
+                        <Stat label="Pts" value={getPointsValue(currentUserRow).toFixed(2)} />
                         <Stat label="Win%" value={`${getWinPctValue(currentUserRow)}%`} />
                         <Stat label="Correct" value={currentUserRow.correctScores ?? 0} />
                         <Stat label="Pending" value={currentUserRow.pending ?? 0} />
@@ -512,7 +514,7 @@ export default function LeaderboardPage() {
                     </div>
 
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-5 lg:mt-0">
-                      <Stat label="Pts" value={getPointsValue(p)} />
+                      <Stat label="Pts" value={getPointsValue(p).toFixed(2)} />
                       <Stat label="Win%" value={`${getWinPctValue(p)}%`} />
                       <Stat label="Correct" value={p.correctScores ?? 0} />
                       <Stat label="Pending" value={p.pending ?? 0} />
