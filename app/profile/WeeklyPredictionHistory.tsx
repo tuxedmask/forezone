@@ -244,7 +244,7 @@ function PickRowCard({ pick }: { pick: WeeklyPredictionPick }) {
 
         {/* ⏱️ KICKOFF TIME */}
         <div className="mb-4 text-center text-[10px] font-semibold uppercase tracking-[0.22em] text-[#9f96c7]">
-          {formatKickoff(pick.kickoff_time)}
+          {formatKickoff(pick.kickoff_time ?? null)}
         </div>
 
         {/* MATCH */}
