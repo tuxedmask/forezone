@@ -546,7 +546,7 @@ function MatchCard({
                     CS
                   </div>
                   <div className="mt-1 text-sm font-bold text-emerald-200">
-                    +{projectedPoints.correctScoreBonus}
+                    +{projectedPoints?.correctScoreBonus ?? 0}
                   </div>
                 </div>
               </div>
