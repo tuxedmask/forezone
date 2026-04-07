@@ -247,7 +247,7 @@ export default async function ProfilePage() {
       ...pick,
       home_logo: matchData.home_logo,
       away_logo: matchData.away_logo,
-      kickoff_time: matchData.kickoff,
+      kickoff_time: matchData.kickoff_time,
     };
   });
 
