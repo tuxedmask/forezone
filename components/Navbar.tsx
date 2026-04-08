@@ -192,22 +192,7 @@ export default function Navbar() {
               active={isSubActive("/soccer/leaderboard")}
               onClick={() => setSoccerOpen(false)}
             />
-          <a
-  href="https://soccer-sim--TuxD.replit.app"
-  target="_blank"
-  rel="noopener noreferrer"
-  onClick={() => setSoccerOpen(false)}
-  className="group relative shrink-0 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-white/72 transition duration-200 hover:border-white/15 hover:bg-white/[0.08] hover:text-white"
->
-  <span className="relative z-10 flex items-center gap-2">
-    Striker
-    <span className="rounded-md bg-emerald-500/20 px-2 py-[2px] text-[10px] font-bold uppercase tracking-wide text-emerald-300">
-      Beta
-    </span>
-  </span>
-
-  <div className="pointer-events-none absolute left-3 right-3 bottom-1 h-[2px] scale-x-0 rounded-full bg-cyan-300/70 opacity-0 transition duration-200 group-hover:scale-x-100 group-hover:opacity-100" />
-</a>
+         
 
           </div>
         </div>
