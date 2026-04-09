@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 
 type Match = {
   id: number;
@@ -168,8 +170,8 @@ function getProjectedPoints(match: Match, pick: ScorePick) {
   const onextwoBonus = isHomeWin
     ? 0.2 * Number(match.home_win_odds ?? 0) * 10
     : isDraw
-    ? 0.5 * Number(match.draw_odds ?? 0) * 10
-    : 0.3 * Number(match.away_win_odds ?? 0) * 10;
+      ? 0.5 * Number(match.draw_odds ?? 0) * 10
+      : 0.3 * Number(match.away_win_odds ?? 0) * 10;
 
   const correctScoreBonus = 17.5 + 17.5 + (isDraw ? 50 : 0);
 
@@ -195,7 +197,9 @@ function TeamBadge({
 }) {
   const [broken, setBroken] = useState(false);
 
-  const outerSize = compact ? "h-10 w-10 rounded-[16px]" : "h-24 w-24 rounded-[26px]";
+  const outerSize = compact
+    ? "h-10 w-10 rounded-[16px]"
+    : "h-24 w-24 rounded-[26px]";
   const innerSize = compact ? "h-7 w-7" : "h-16 w-16";
   const textSize = compact ? "text-sm" : "text-xl";
   const padding = compact ? "p-1.5" : "p-3";
@@ -312,12 +316,16 @@ function MatchCard({
   onChange,
   locked,
   leagueName,
+  authRequired = false,
+  onAuthRequired,
 }: {
   match: Match;
   pick: ScorePick;
   onChange: (next: ScorePick) => void;
   locked: boolean;
   leagueName: string;
+  authRequired?: boolean;
+  onAuthRequired: () => void;
 }) {
   const previewReady = pick.homeScore !== "" && pick.awayScore !== "";
   const homeShort = getShortTeamName(match.home);
@@ -329,40 +337,40 @@ function MatchCard({
   const predictionSide = !previewReady
     ? "none"
     : homeScoreNum > awayScoreNum
-    ? "home"
-    : homeScoreNum < awayScoreNum
-    ? "away"
-    : "draw";
+      ? "home"
+      : homeScoreNum < awayScoreNum
+        ? "away"
+        : "draw";
 
   const outerGlowClass =
     predictionSide === "home"
       ? "before:absolute before:top-0 before:bottom-0 before:left-0 before:w-[38%] before:bg-[radial-gradient(circle_at_left_center,rgba(16,185,129,0.18),transparent_72%)] before:animate-[pulseGlowLeft_2.8s_ease-in-out_infinite]"
       : predictionSide === "away"
-      ? "before:absolute before:top-0 before:bottom-0 before:right-0 before:w-[38%] before:bg-[radial-gradient(circle_at_right_center,rgba(139,92,246,0.18),transparent_72%)] before:animate-[pulseGlowRight_2.8s_ease-in-out_infinite]"
-      : "";
+        ? "before:absolute before:top-0 before:bottom-0 before:right-0 before:w-[38%] before:bg-[radial-gradient(circle_at_right_center,rgba(139,92,246,0.18),transparent_72%)] before:animate-[pulseGlowRight_2.8s_ease-in-out_infinite]"
+        : "";
 
   const matchupGlowClass =
     predictionSide === "home"
       ? "before:absolute before:inset-y-0 before:left-0 before:w-[44%] before:bg-[radial-gradient(circle_at_left_center,rgba(16,185,129,0.20),transparent_72%)] before:animate-[pulseGlowLeft_2.8s_ease-in-out_infinite]"
       : predictionSide === "away"
-      ? "before:absolute before:inset-y-0 before:right-0 before:w-[44%] before:bg-[radial-gradient(circle_at_right_center,rgba(139,92,246,0.20),transparent_72%)] before:animate-[pulseGlowRight_2.8s_ease-in-out_infinite]"
-      : predictionSide === "draw"
-      ? "before:absolute before:inset-y-0 before:left-0 before:w-1/2 before:bg-[radial-gradient(circle_at_85%_50%,rgba(34,211,238,0.16),transparent_72%)] before:animate-[pulseDrawSide_2.8s_ease-in-out_infinite] after:absolute after:inset-y-0 after:right-0 after:w-1/2 after:bg-[radial-gradient(circle_at_15%_50%,rgba(34,211,238,0.16),transparent_72%)] after:animate-[pulseDrawSide_2.8s_ease-in-out_infinite]"
-      : "";
+        ? "before:absolute before:inset-y-0 before:right-0 before:w-[44%] before:bg-[radial-gradient(circle_at_right_center,rgba(139,92,246,0.20),transparent_72%)] before:animate-[pulseGlowRight_2.8s_ease-in-out_infinite]"
+        : predictionSide === "draw"
+          ? "before:absolute before:inset-y-0 before:left-0 before:w-1/2 before:bg-[radial-gradient(circle_at_85%_50%,rgba(34,211,238,0.16),transparent_72%)] before:animate-[pulseDrawSide_2.8s_ease-in-out_infinite] after:absolute after:inset-y-0 after:right-0 after:w-1/2 after:bg-[radial-gradient(circle_at_15%_50%,rgba(34,211,238,0.16),transparent_72%)] after:animate-[pulseDrawSide_2.8s_ease-in-out_infinite]"
+          : "";
 
   const homeAccentClass =
     predictionSide === "home"
       ? "ring-2 ring-emerald-400/40 bg-emerald-500/10 shadow-[0_0_24px_rgba(16,185,129,0.18)] animate-[pulseBadge_2.8s_ease-in-out_infinite]"
       : predictionSide === "draw"
-      ? "ring-2 ring-cyan-400/30 bg-cyan-500/10 shadow-[0_0_20px_rgba(34,211,238,0.14)] animate-[pulseDrawBadge_2.8s_ease-in-out_infinite]"
-      : "";
+        ? "ring-2 ring-cyan-400/30 bg-cyan-500/10 shadow-[0_0_20px_rgba(34,211,238,0.14)] animate-[pulseDrawBadge_2.8s_ease-in-out_infinite]"
+        : "";
 
   const awayAccentClass =
     predictionSide === "away"
       ? "ring-2 ring-violet-400/40 bg-violet-500/10 shadow-[0_0_24px_rgba(139,92,246,0.18)] animate-[pulseBadge_2.8s_ease-in-out_infinite]"
       : predictionSide === "draw"
-      ? "ring-2 ring-cyan-400/30 bg-cyan-500/10 shadow-[0_0_20px_rgba(34,211,238,0.14)] animate-[pulseDrawBadge_2.8s_ease-in-out_infinite]"
-      : "";
+        ? "ring-2 ring-cyan-400/30 bg-cyan-500/10 shadow-[0_0_20px_rgba(34,211,238,0.14)] animate-[pulseDrawBadge_2.8s_ease-in-out_infinite]"
+        : "";
 
   const centerAccentClass =
     predictionSide === "draw"
@@ -373,13 +381,14 @@ function MatchCard({
     homeScoreNum > awayScoreNum
       ? "Home"
       : homeScoreNum < awayScoreNum
-      ? "Away"
-      : "Draw";
+        ? "Away"
+        : "Draw";
 
   const ouLabel = homeScoreNum + awayScoreNum > 2 ? "Over" : "Under";
   const bttsLabel = homeScoreNum > 0 && awayScoreNum > 0 ? "Yes" : "No";
 
   const projectedPoints = getProjectedPoints(match, pick);
+  const showAuthPrompt = authRequired && !locked;
 
   return (
     <div
@@ -402,6 +411,14 @@ function MatchCard({
             <div className="mt-2 inline-flex rounded-full border border-amber-400/20 bg-amber-500/10 px-3 py-1 text-[11px] font-semibold text-amber-200">
               Locked
             </div>
+          ) : showAuthPrompt ? (
+            <button
+              type="button"
+              onClick={onAuthRequired}
+              className="mt-2 inline-flex rounded-full border border-cyan-400/20 bg-cyan-500/10 px-3 py-1 text-[11px] font-semibold text-cyan-200 transition hover:bg-cyan-500/15"
+            >
+              Sign in to edit
+            </button>
           ) : null}
         </div>
 
@@ -443,11 +460,20 @@ function MatchCard({
           </div>
 
           <div className="relative z-10 mt-5 rounded-[22px] border border-cyan-400/10 bg-[#03060d] px-4 py-4">
+            {showAuthPrompt ? (
+              <button
+                type="button"
+                onClick={onAuthRequired}
+                className="absolute inset-0 z-20 rounded-[22px]"
+                aria-label="Sign in to edit this prediction"
+              />
+            ) : null}
+
             <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
               <div className="flex justify-center">
                 <ScoreInput
                   value={pick.homeScore}
-                  disabled={locked}
+                  disabled={locked || showAuthPrompt}
                   onChange={(value) =>
                     onChange({
                       ...pick,
@@ -466,7 +492,7 @@ function MatchCard({
               <div className="flex justify-center">
                 <ScoreInput
                   value={pick.awayScore}
-                  disabled={locked}
+                  disabled={locked || showAuthPrompt}
                   onChange={(value) =>
                     onChange({
                       ...pick,
@@ -572,12 +598,17 @@ function MatchCard({
 }
 
 export default function PremierLeaguePredictionsPage() {
+  const { status } = useSession();
+  const router = useRouter();
+
   const [matches, setMatches] = useState<Match[]>([]);
   const [leagueName, setLeagueName] = useState("Premier League");
   const [matchweekLabel, setMatchweekLabel] = useState<string | null>(null);
   const [selectedMatchweek, setSelectedMatchweek] = useState("");
   const [matchweekMenuOpen, setMatchweekMenuOpen] = useState(false);
-  const [availableMatchweeks, setAvailableMatchweeks] = useState<MatchweekOption[]>([]);
+  const [availableMatchweeks, setAvailableMatchweeks] = useState<
+    MatchweekOption[]
+  >([]);
 
   const [picks, setPicks] = useState<Record<number, ScorePick>>({});
   const [loadingMatchweek, setLoadingMatchweek] = useState(true);
@@ -588,8 +619,14 @@ export default function PremierLeaguePredictionsPage() {
   const [submitSuccess, setSubmitSuccess] = useState("");
 
   const [hasExistingEntry, setHasExistingEntry] = useState(false);
+  const [showSignInPrompt, setShowSignInPrompt] = useState(false);
 
   function updatePick(matchId: number, next: ScorePick) {
+    if (status !== "authenticated") {
+      setShowSignInPrompt(true);
+      return;
+    }
+
     setPicks((prev) => ({
       ...prev,
       [matchId]: next,
@@ -612,7 +649,9 @@ export default function PremierLeaguePredictionsPage() {
 
         const query = params.toString();
         const res = await fetch(
-          `/api/soccer/predictions/premier-league/matchweek${query ? `?${query}` : ""}`,
+          `/api/soccer/predictions/premier-league/matchweek${
+            query ? `?${query}` : ""
+          }`,
           { cache: "no-store" }
         );
 
@@ -671,9 +710,12 @@ export default function PremierLeaguePredictionsPage() {
           matchweekLabel,
         });
 
-        const res = await fetch(`/api/soccer/predictions/my-entry?${params.toString()}`, {
-          cache: "no-store",
-        });
+        const res = await fetch(
+          `/api/soccer/predictions/my-entry?${params.toString()}`,
+          {
+            cache: "no-store",
+          }
+        );
 
         const data = await res.json();
 
@@ -743,6 +785,11 @@ export default function PremierLeaguePredictionsPage() {
   const allStarted = totalMatches > 0 && editableMatches === 0;
 
   async function handleSubmit() {
+    if (status !== "authenticated") {
+      setShowSignInPrompt(true);
+      return;
+    }
+
     try {
       setSubmitError("");
       setSubmitSuccess("");
@@ -891,7 +938,8 @@ export default function PremierLeaguePredictionsPage() {
                       ) : (
                         availableMatchweeks.map((option) => {
                           const active =
-                            option.value === (selectedMatchweek || matchweekLabel);
+                            option.value ===
+                            (selectedMatchweek || matchweekLabel);
 
                           return (
                             <button
@@ -939,6 +987,12 @@ export default function PremierLeaguePredictionsPage() {
                 You can update any pick for matches that have not started yet.
               </div>
             ) : null}
+
+            {status !== "authenticated" && !pageLoading && !allStarted ? (
+              <div className="mx-auto mt-4 max-w-3xl rounded-2xl border border-cyan-400/20 bg-cyan-500/10 px-4 py-3 text-center text-sm text-cyan-200">
+                Sign in to adjust games and submit your prediction card.
+              </div>
+            ) : null}
           </div>
 
           <div className="mt-8 grid gap-4 xl:grid-cols-[1fr_320px]">
@@ -966,177 +1020,235 @@ export default function PremierLeaguePredictionsPage() {
                       onChange={(next) => updatePick(match.id, next)}
                       locked={hasMatchStarted(match.kickoff)}
                       leagueName={leagueName}
+                      authRequired={status !== "authenticated"}
+                      onAuthRequired={() => setShowSignInPrompt(true)}
                     />
                   ))}
                 </div>
               )}
             </div>
 
-             <aside className="h-fit rounded-[22px] border border-white/10 bg-white/5 p-4 backdrop-blur-xl xl:sticky xl:top-20">
-  <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-cyan-200">
-    Your Card
-  </div>
+            <aside className="h-fit rounded-[22px] border border-white/10 bg-white/5 p-4 backdrop-blur-xl xl:sticky xl:top-20">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-cyan-200">
+                Your Card
+              </div>
 
-  <h2 className="mt-2 text-xl font-bold text-white">
-    Matchweek Summary
-  </h2>
+              <h2 className="mt-2 text-xl font-bold text-white">
+                Matchweek Summary
+              </h2>
 
-  <p className="mt-2 text-sm leading-6 text-white/60">
-    Review your saved scorelines before submitting.
-  </p>
+              <p className="mt-2 text-sm leading-6 text-white/60">
+                Review your saved scorelines before submitting.
+              </p>
 
-  <div className="mt-4 space-y-2.5">
-    {matches.map((match) => {
-      const pick = picks[match.id] || {
-        homeScore: "",
-        awayScore: "",
-      };
+              <div className="mt-4 space-y-2.5">
+                {matches.map((match) => {
+                  const pick = picks[match.id] || {
+                    homeScore: "",
+                    awayScore: "",
+                  };
 
-      const locked = hasMatchStarted(match.kickoff);
-      const complete =
-        pick.homeScore !== "" && pick.awayScore !== "";
+                  const locked = hasMatchStarted(match.kickoff);
+                  const complete =
+                    pick.homeScore !== "" && pick.awayScore !== "";
 
-      const homeShort = getShortTeamName(match.home);
-      const awayShort = getShortTeamName(match.away);
+                  const homeShort = getShortTeamName(match.home);
+                  const awayShort = getShortTeamName(match.away);
 
-      const homeScoreNum = Number(pick.homeScore);
-      const awayScoreNum = Number(pick.awayScore);
+                  const homeScoreNum = Number(pick.homeScore);
+                  const awayScoreNum = Number(pick.awayScore);
 
-      const predictionSide = !complete
-        ? "none"
-        : homeScoreNum > awayScoreNum
-        ? "home"
-        : homeScoreNum < awayScoreNum
-        ? "away"
-        : "draw";
+                  const predictionSide = !complete
+                    ? "none"
+                    : homeScoreNum > awayScoreNum
+                      ? "home"
+                      : homeScoreNum < awayScoreNum
+                        ? "away"
+                        : "draw";
 
-      const summaryGlowClass =
-        predictionSide === "home"
-          ? "before:absolute before:top-0 before:bottom-0 before:left-0 before:w-[36%] before:bg-[radial-gradient(circle_at_left_center,rgba(16,185,129,0.14),transparent_72%)]"
-          : predictionSide === "away"
-          ? "before:absolute before:top-0 before:bottom-0 before:right-0 before:w-[36%] before:bg-[radial-gradient(circle_at_right_center,rgba(139,92,246,0.14),transparent_72%)]"
-          : predictionSide === "draw"
-          ? "before:absolute before:inset-y-0 before:left-0 before:w-1/2 before:bg-[radial-gradient(circle_at_85%_50%,rgba(34,211,238,0.10),transparent_72%)] after:absolute after:inset-y-0 after:right-0 after:w-1/2 after:bg-[radial-gradient(circle_at_15%_50%,rgba(34,211,238,0.10),transparent_72%)]"
-          : "";
+                  const summaryGlowClass =
+                    predictionSide === "home"
+                      ? "before:absolute before:top-0 before:bottom-0 before:left-0 before:w-[36%] before:bg-[radial-gradient(circle_at_left_center,rgba(16,185,129,0.14),transparent_72%)]"
+                      : predictionSide === "away"
+                        ? "before:absolute before:top-0 before:bottom-0 before:right-0 before:w-[36%] before:bg-[radial-gradient(circle_at_right_center,rgba(139,92,246,0.14),transparent_72%)]"
+                        : predictionSide === "draw"
+                          ? "before:absolute before:inset-y-0 before:left-0 before:w-1/2 before:bg-[radial-gradient(circle_at_85%_50%,rgba(34,211,238,0.10),transparent_72%)] after:absolute after:inset-y-0 after:right-0 after:w-1/2 after:bg-[radial-gradient(circle_at_15%_50%,rgba(34,211,238,0.10),transparent_72%)]"
+                          : "";
 
-      const homeAccentClass =
-        predictionSide === "home"
-          ? "ring-2 ring-emerald-400/35 bg-emerald-500/10"
-          : predictionSide === "draw"
-          ? "ring-2 ring-cyan-400/25 bg-cyan-500/10"
-          : "";
+                  const homeAccentClass =
+                    predictionSide === "home"
+                      ? "ring-2 ring-emerald-400/35 bg-emerald-500/10"
+                      : predictionSide === "draw"
+                        ? "ring-2 ring-cyan-400/25 bg-cyan-500/10"
+                        : "";
 
-      const awayAccentClass =
-        predictionSide === "away"
-          ? "ring-2 ring-violet-400/35 bg-violet-500/10"
-          : predictionSide === "draw"
-          ? "ring-2 ring-cyan-400/25 bg-cyan-500/10"
-          : "";
+                  const awayAccentClass =
+                    predictionSide === "away"
+                      ? "ring-2 ring-violet-400/35 bg-violet-500/10"
+                      : predictionSide === "draw"
+                        ? "ring-2 ring-cyan-400/25 bg-cyan-500/10"
+                        : "";
 
-      return (
+                  return (
+                    <div
+                      key={match.id}
+                      className={`relative overflow-hidden rounded-[18px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.03))] px-3 py-2.5 shadow-[0_8px_22px_rgba(0,0,0,0.20)] ${summaryGlowClass}`}
+                    >
+                      <div className="relative z-10">
+                        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-1.5">
+                          <div className="flex min-w-0 flex-col items-center text-center">
+                            <div className={`rounded-[16px] p-1 ${homeAccentClass}`}>
+                              <div className="flex h-9 w-9 items-center justify-center">
+                                <img
+                                  src={match.homeLogo}
+                                  alt={match.home}
+                                  className="h-7 w-7 object-contain"
+                                />
+                              </div>
+                            </div>
+                            <div className="mt-1.5 max-w-[92px] text-[12px] font-semibold leading-tight text-white whitespace-normal break-normal">
+                              {homeShort}
+                            </div>
+                          </div>
+
+                          <div className="min-w-[60px] text-center">
+                            <div className="text-[1.9rem] font-black leading-none tracking-tight text-white">
+                              {complete
+                                ? `${pick.homeScore} - ${pick.awayScore}`
+                                : "- -"}
+                            </div>
+
+                            {locked ? (
+                              <div className="mt-1 inline-flex rounded-full border border-amber-400/20 bg-amber-500/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-amber-200">
+                                Locked
+                              </div>
+                            ) : null}
+                          </div>
+
+                          <div className="flex min-w-0 flex-col items-center text-center">
+                            <div className={`rounded-[16px] p-1 ${awayAccentClass}`}>
+                              <div className="flex h-9 w-9 items-center justify-center">
+                                <img
+                                  src={match.awayLogo}
+                                  alt={match.away}
+                                  className="h-7 w-7 object-contain"
+                                />
+                              </div>
+                            </div>
+                            <div className="mt-1.5 max-w-[92px] text-[12px] font-semibold leading-tight text-white whitespace-normal break-normal">
+                              {awayShort}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {submitError ? (
+                <div className="mt-4 rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+                  {submitError}
+                </div>
+              ) : null}
+
+              {submitSuccess ? (
+                <div className="mt-4 rounded-2xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+                  {submitSuccess}
+                </div>
+              ) : null}
+
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={
+                  status === "authenticated" &&
+                  (!allEditableCompleted ||
+                    submitting ||
+                    pageLoading ||
+                    matches.length === 0 ||
+                    allStarted)
+                }
+                className={[
+                  "mt-4 w-full rounded-2xl px-5 py-4 text-sm font-semibold transition",
+                  status !== "authenticated"
+                    ? "bg-white text-black hover:scale-[1.01]"
+                    : allEditableCompleted &&
+                        !submitting &&
+                        !pageLoading &&
+                        matches.length > 0 &&
+                        !allStarted
+                      ? "bg-white text-black hover:scale-[1.01]"
+                      : "cursor-not-allowed border border-white/10 bg-white/5 text-white/40",
+                ].join(" ")}
+              >
+                {pageLoading
+                  ? "Loading..."
+                  : submitting
+                    ? hasExistingEntry
+                      ? "Updating..."
+                      : "Submitting..."
+                    : allStarted
+                      ? "All Matches Locked"
+                      : status !== "authenticated"
+                        ? "Sign In to Submit"
+                        : hasExistingEntry
+                          ? "Update Editable Picks"
+                          : "Submit Picks"}
+              </button>
+            </aside>
+          </div>
+        </div>
+      </section>
+
+      {showSignInPrompt ? (
         <div
-          key={match.id}
-          className={`relative overflow-hidden rounded-[18px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.03))] px-3 py-2.5 shadow-[0_8px_22px_rgba(0,0,0,0.20)] ${summaryGlowClass}`}
+          className="fixed inset-0 z-[120] flex items-center justify-center bg-black/75 px-4 backdrop-blur-sm"
+          onClick={() => setShowSignInPrompt(false)}
         >
-          <div className="relative z-10">
-            <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-1.5">
-              <div className="flex min-w-0 flex-col items-center text-center">
-                <div className={`rounded-[16px] p-1 ${homeAccentClass}`}>
-                  <div className="flex h-9 w-9 items-center justify-center">
-                    <img
-                      src={match.homeLogo}
-                      alt={match.home}
-                      className="h-7 w-7 object-contain"
-                    />
-                  </div>
-                </div>
-                <div className="mt-1.5 max-w-[92px] text-[12px] font-semibold leading-tight text-white whitespace-normal break-normal">
-                  {homeShort}
-                </div>
+          <div
+            className="relative w-full max-w-md overflow-hidden rounded-[28px] border border-[#31294c] bg-[linear-gradient(180deg,#151127,#0d0a19)] p-6 shadow-[0_30px_90px_rgba(0,0,0,0.6)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-400/40 to-transparent" />
+            <div className="absolute -top-16 right-[-30px] h-40 w-40 rounded-full bg-emerald-500/10 blur-3xl" />
+            <div className="absolute -bottom-16 left-[-20px] h-40 w-40 rounded-full bg-cyan-500/10 blur-3xl" />
+
+            <div className="relative">
+              <div className="inline-flex rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-200">
+                Fore Zone
               </div>
 
-              <div className="min-w-[60px] text-center">
-                <div className="text-[1.9rem] font-black leading-none tracking-tight text-white">
-                  {complete ? `${pick.homeScore} - ${pick.awayScore}` : "- -"}
-                </div>
+              <h3 className="mt-4 text-2xl font-black tracking-tight text-white">
+                Sign in to submit predictions
+              </h3>
 
-                {locked ? (
-                  <div className="mt-1 inline-flex rounded-full border border-amber-400/20 bg-amber-500/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-amber-200">
-                    Locked
-                  </div>
-                ) : null}
-              </div>
+              <p className="mt-3 text-sm leading-6 text-[#c7c3da]">
+                You need to be signed in if you want to adjust a game and submit
+                a prediction.
+              </p>
 
-              <div className="flex min-w-0 flex-col items-center text-center">
-                <div className={`rounded-[16px] p-1 ${awayAccentClass}`}>
-                  <div className="flex h-9 w-9 items-center justify-center">
-                    <img
-                      src={match.awayLogo}
-                      alt={match.away}
-                      className="h-7 w-7 object-contain"
-                    />
-                  </div>
-                </div>
-                <div className="mt-1.5 max-w-[92px] text-[12px] font-semibold leading-tight text-white whitespace-normal break-normal">
-                  {awayShort}
-                </div>
+              <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => router.push("/login")}
+                  className="rounded-2xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500/20"
+                >
+                  Sign In
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowSignInPrompt(false)}
+                  className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-[#d8d4ea] transition hover:bg-white/10"
+                >
+                  Nah, I&apos;m browsing
+                </button>
               </div>
             </div>
           </div>
         </div>
-      );
-    })}
-  </div>
-
-  {submitError ? (
-    <div className="mt-4 rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-      {submitError}
-    </div>
-  ) : null}
-
-  {submitSuccess ? (
-    <div className="mt-4 rounded-2xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
-      {submitSuccess}
-    </div>
-  ) : null}
-
-  <button
-    type="button"
-    onClick={handleSubmit}
-    disabled={
-      !allEditableCompleted ||
-      submitting ||
-      pageLoading ||
-      matches.length === 0 ||
-      allStarted
-    }
-    className={[
-      "mt-4 w-full rounded-2xl px-5 py-4 text-sm font-semibold transition",
-      allEditableCompleted &&
-      !submitting &&
-      !pageLoading &&
-      matches.length > 0 &&
-      !allStarted
-        ? "bg-white text-black hover:scale-[1.01]"
-        : "cursor-not-allowed border border-white/10 bg-white/5 text-white/40",
-    ].join(" ")}
-  >
-    {pageLoading
-      ? "Loading..."
-      : submitting
-      ? hasExistingEntry
-        ? "Updating..."
-        : "Submitting..."
-      : allStarted
-      ? "All Matches Locked"
-      : hasExistingEntry
-      ? "Update Editable Picks"
-      : "Submit Picks"}
-  </button>
-</aside>
-          </div>
-        </div>
-      </section>
+      ) : null}
 
       <style jsx global>{`
         @keyframes pulseGlowLeft {

@@ -297,6 +297,26 @@ export default function LoginPage() {
               >
                 Continue with Twitch
               </button>
+<button
+  type="button"
+  onClick={() => signIn("google", { callbackUrl: "/" })}
+  style={{
+    width: "100%",
+    padding: "15px 18px",
+    borderRadius: 16,
+    border: "1px solid rgba(34,197,94,0.28)",
+    background:
+      "linear-gradient(180deg, rgba(34,197,94,0.20), rgba(34,197,94,0.10))",
+    color: "white",
+    fontWeight: 800,
+    fontSize: 15,
+    cursor: "pointer",
+    boxShadow: "0 0 18px rgba(34,197,94,0.14)",
+  }}
+>
+  Continue with Google
+</button>
+
             </div>
 
             <div

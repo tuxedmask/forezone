@@ -1,6 +1,7 @@
 import { type NextAuthOptions } from "next-auth";
 import DiscordProvider from "next-auth/providers/discord";
 import TwitchProvider from "next-auth/providers/twitch";
+import GoogleProvider from "next-auth/providers/google";
 import { supabase } from "@/lib/supabase";
 import crypto from "crypto";
 import { cookies } from "next/headers";
@@ -8,6 +9,30 @@ import { createClient } from "@supabase/supabase-js";
 
 function makeAppUserId() {
   return crypto.randomUUID();
+}
+
+function normalizeEmail(email?: string | null) {
+  if (!email) return null;
+
+  const cleaned = email.trim().toLowerCase();
+  const parts = cleaned.split("@");
+
+  if (parts.length !== 2) return cleaned;
+
+  let [local, domain] = parts;
+
+  // Treat googlemail.com as gmail.com
+  if (domain === "googlemail.com") {
+    domain = "gmail.com";
+  }
+
+  // Gmail normalization:
+  // dots are ignored, and anything after + is ignored
+  if (domain === "gmail.com") {
+    local = local.split("+")[0].replace(/\./g, "");
+  }
+
+  return `${local}@${domain}`;
 }
 
 function getServiceSupabase() {
@@ -29,6 +54,43 @@ async function findLinkedAccount(provider: string, providerAccountId: string) {
   return data;
 }
 
+async function findUserByNormalizedEmail(email: string) {
+  const normalized = normalizeEmail(email);
+  if (!normalized) return null;
+
+  // 1) Check users table
+  const { data: usersRows, error: usersError } = await supabase
+    .from("users")
+    .select("id, email");
+
+  if (usersError) throw new Error(usersError.message);
+
+  const matchedUser = (usersRows ?? []).find(
+    (row) => normalizeEmail(row.email) === normalized
+  );
+
+  if (matchedUser?.id) {
+    return { id: matchedUser.id };
+  }
+
+  // 2) Check linked accounts table too
+  const { data: accountRows, error: accountsError } = await supabase
+    .from("user_accounts")
+    .select("user_id, email");
+
+  if (accountsError) throw new Error(accountsError.message);
+
+  const matchedAccount = (accountRows ?? []).find(
+    (row) => normalizeEmail(row.email) === normalized
+  );
+
+  if (matchedAccount?.user_id) {
+    return { id: matchedAccount.user_id };
+  }
+
+  return null;
+}
+
 async function createUser(params: {
   name?: string | null;
   email?: string | null;
@@ -39,7 +101,7 @@ async function createUser(params: {
   const { error } = await supabase.from("users").insert({
     id,
     name: params.name ?? null,
-    email: params.email ?? null,
+    email: normalizeEmail(params.email),
     image: params.image ?? null,
   });
 
@@ -58,7 +120,7 @@ async function linkAccount(params: {
     user_id: params.userId,
     provider: params.provider,
     provider_account_id: params.providerAccountId,
-    email: params.email ?? null,
+    email: normalizeEmail(params.email),
   });
 
   if (error) {
@@ -85,13 +147,14 @@ async function updateUserProfile(params: {
   if (existingError) throw new Error(existingError.message);
 
   const updates: Record<string, string | null> = {};
+  const normalizedEmail = normalizeEmail(params.email);
 
   if (params.name && !existingUser?.name) {
     updates.name = params.name;
   }
 
-  if (params.email && !existingUser?.email) {
-    updates.email = params.email;
+  if (normalizedEmail && !existingUser?.email) {
+    updates.email = normalizedEmail;
   }
 
   if (params.provider === "discord" && params.image) {
@@ -162,10 +225,24 @@ export const authOptions: NextAuthOptions = {
     DiscordProvider({
       clientId: process.env.DISCORD_CLIENT_ID!,
       clientSecret: process.env.DISCORD_CLIENT_SECRET!,
+      authorization: {
+        params: {
+          scope: "identify email",
+        },
+      },
     }),
     TwitchProvider({
       clientId: process.env.TWITCH_CLIENT_ID!,
       clientSecret: process.env.TWITCH_CLIENT_SECRET!,
+      authorization: {
+        params: {
+          scope: "user:read:email",
+        },
+      },
+    }),
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     }),
   ],
 
@@ -178,12 +255,13 @@ export const authOptions: NextAuthOptions = {
   },
 
   callbacks: {
-    async signIn({ user, account }) {
+    async signIn({ user, account, profile }) {
       if (!account) return false;
 
       try {
         const provider = account.provider;
         const providerAccountId = account.providerAccountId;
+        const email = normalizeEmail(user.email);
 
         const pendingLinkToken = await getPendingLinkToken();
 
@@ -200,7 +278,10 @@ export const authOptions: NextAuthOptions = {
             return "/profile?linkError=provider-mismatch";
           }
 
-          const existingLinked = await findLinkedAccount(provider, providerAccountId);
+          const existingLinked = await findLinkedAccount(
+            provider,
+            providerAccountId
+          );
 
           if (existingLinked && existingLinked.user_id !== tokenRow.user_id) {
             await clearPendingLinkToken();
@@ -213,7 +294,7 @@ export const authOptions: NextAuthOptions = {
               userId: tokenRow.user_id,
               provider,
               providerAccountId,
-              email: user.email,
+              email,
             });
           }
 
@@ -221,7 +302,7 @@ export const authOptions: NextAuthOptions = {
             userId: tokenRow.user_id,
             provider,
             name: user.name,
-            email: user.email,
+            email,
             image: user.image,
           });
 
@@ -234,17 +315,48 @@ export const authOptions: NextAuthOptions = {
         const linked = await findLinkedAccount(provider, providerAccountId);
 
         if (!linked) {
-          const newUser = await createUser({
-            name: user.name,
-            email: user.email,
-            image: user.image,
-          });
+          let userId: string | null = null;
+
+          // Prefer verified Google email when available
+          if (
+            provider === "google" &&
+            profile &&
+            "email_verified" in profile &&
+            !profile.email_verified
+          ) {
+            return "/login?error=GoogleEmailNotVerified";
+          }
+
+          if (email) {
+            const existingUser = await findUserByNormalizedEmail(email);
+            if (existingUser?.id) {
+              userId = existingUser.id;
+            }
+          }
+
+          if (!userId) {
+            const newUser = await createUser({
+              name: user.name,
+              email,
+              image: user.image,
+            });
+
+            userId = newUser.id;
+          }
 
           await linkAccount({
-            userId: newUser.id,
+            userId,
             provider,
             providerAccountId,
-            email: user.email,
+            email,
+          });
+
+          await updateUserProfile({
+            userId,
+            provider,
+            name: user.name,
+            email,
+            image: user.image,
           });
         }
 

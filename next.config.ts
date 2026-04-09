@@ -23,6 +23,12 @@ const nextConfig = {
         protocol: "https",
         hostname: "upload.wikimedia.org",
       },
+
+      // ✅ ADD THIS
+      {
+        protocol: "https",
+        hostname: "lh3.googleusercontent.com",
+      },
     ],
   },
 };
