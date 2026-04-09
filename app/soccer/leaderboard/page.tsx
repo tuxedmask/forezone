@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 
 type RangeType = "weekly" | "all";
@@ -24,8 +24,7 @@ type LeaderboardRow = {
 };
 
 function getRangeLabel(range: RangeType) {
-  if (range === "weekly") return "Weekly";
-  return "All-Time";
+  return range === "weekly" ? "Weekly" : "All-Time";
 }
 
 function getRankIcon(index: number) {
@@ -118,64 +117,6 @@ function buildWeekOptions(startWeek = 32, totalWeeks = 38) {
   );
 }
 
-function WeekScroller({
-  weekOptions,
-  selectedMatchweek,
-  currentMatchweek,
-  onSelect,
-}: {
-  weekOptions: number[];
-  selectedMatchweek: number | null;
-  currentMatchweek: number | null;
-  onSelect: (week: number) => void;
-}) {
-  const selectedRef = useRef<HTMLButtonElement | null>(null);
-
-  useEffect(() => {
-    if (!selectedRef.current) return;
-
-    selectedRef.current.scrollIntoView({
-      behavior: "smooth",
-      inline: "center",
-      block: "nearest",
-    });
-  }, [selectedMatchweek]);
-
-  return (
-    <div className="relative">
-      <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-14 bg-gradient-to-r from-[#101733] to-transparent" />
-      <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-14 bg-gradient-to-l from-[#111936] to-transparent" />
-
-      <div className="flex snap-x snap-mandatory justify-center gap-2 overflow-x-auto pb-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-        {weekOptions.map((week) => {
-          const isSelected = selectedMatchweek === week;
-          const isCurrent = currentMatchweek === week;
-
-          return (
-            <button
-              key={week}
-              ref={isSelected ? selectedRef : null}
-              onClick={() => onSelect(week)}
-              className={`snap-center shrink-0 rounded-xl border px-4 py-2 text-sm font-bold transition ${
-                isSelected
-                  ? "border-indigo-400/50 bg-indigo-500 text-white shadow-[0_0_18px_rgba(99,102,241,0.45)]"
-                  : "border-white/10 bg-white/5 text-white/75 hover:border-indigo-300/30 hover:bg-indigo-500/15 hover:text-white"
-              }`}
-            >
-              <span>Week {week}</span>
-              {isCurrent && (
-                <span className="ml-2 rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] uppercase tracking-wide text-emerald-300">
-                  Current
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 export default function LeaderboardPage() {
   const { data: session } = useSession();
 
@@ -184,6 +125,8 @@ export default function LeaderboardPage() {
   const [range, setRange] = useState<RangeType>("weekly");
   const [currentMatchweek, setCurrentMatchweek] = useState<number | null>(null);
   const [selectedMatchweek, setSelectedMatchweek] = useState<number | null>(null);
+  const [rangeMenuOpen, setRangeMenuOpen] = useState(false);
+  const [matchweekMenuOpen, setMatchweekMenuOpen] = useState(false);
 
   async function fetchLeaderboard(
     rangeValue: RangeType,
@@ -281,66 +224,181 @@ export default function LeaderboardPage() {
   }, [rows, currentUserId]);
 
   const remainingRows = useMemo(() => {
-    if (!currentUserId) return rows;
-    return rows.filter((row) => row.userId !== currentUserId);
-  }, [rows, currentUserId]);
+  return rows;
+}, [rows]);
 
   const weekOptions = useMemo(() => buildWeekOptions(32, 38), []);
 
+  const totalPicksShown = useMemo(() => {
+    return rows.reduce((sum, row) => sum + Number(row.picksCount ?? 0), 0);
+  }, [rows]);
+
+  const entriesShown = useMemo(() => {
+    return Math.round((totalPicksShown / 10) * 100) / 100;
+  }, [totalPicksShown]);
+
   return (
     <main className="min-h-screen bg-[#050816] text-white">
-      <div className="mx-auto max-w-7xl px-4 py-10">
-        <div className="rounded-3xl border border-indigo-400/20 bg-gradient-to-br from-[#0b1024] via-[#101733] to-[#111936] p-6 shadow-[0_0_40px_rgba(99,102,241,0.2)]">
-          <div className="flex flex-col items-center justify-center text-center">
-            <div className="inline-flex rounded-full border border-indigo-300/15 bg-indigo-500/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-indigo-200">
-              ForeZone Soccer
+      <section className="relative isolate z-20 overflow-visible">
+<div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.18),transparent_28%),radial-gradient(circle_at_top_right,rgba(99,102,241,0.14),transparent_26%),linear-gradient(to_bottom,rgba(5,7,15,0.25),rgba(5,7,15,0.98))]" />
+        <div className="relative z-30 mx-auto max-w-7xl px-4 py-9 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-4xl text-center">
+            <div className="inline-flex rounded-full border border-emerald-400/20 bg-emerald-500/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-emerald-200">
+              Soccer Zone • Premier League
             </div>
 
-            <h1 className="mt-3 text-4xl font-black tracking-tight sm:text-5xl">
+            <h1 className="mt-4 text-4xl font-black uppercase tracking-tight sm:text-5xl lg:text-6xl">
               Lead Zone
             </h1>
 
-            <p className="mt-2 text-white/60">
+            <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-white/70 sm:text-lg">
               {getRangeLabel(range)} rankings — climb the ladder
             </p>
 
             <p className="mt-1 text-xs text-indigo-300/60">
               Current Matchweek: {currentMatchweek ?? "—"}
             </p>
-
-            <div className="mt-5 flex items-center justify-center gap-2">
-              {(["weekly", "all"] as RangeType[]).map((r) => (
-                <button
-                  key={r}
-                  onClick={() => setRange(r)}
-                  className={`rounded-xl px-4 py-2 text-sm font-bold transition ${
-                    range === r
-                      ? "bg-indigo-500 shadow-[0_0_20px_rgba(99,102,241,0.6)]"
-                      : "border border-white/10 bg-white/5 hover:bg-indigo-500/20"
-                  }`}
-                >
-                  {getRangeLabel(r)}
-                </button>
-              ))}
-            </div>
           </div>
 
-          {range === "weekly" && (
-            <div className="mt-8">
-              <div className="mb-3 text-center text-xs font-bold uppercase tracking-[0.2em] text-indigo-300/70">
-                Gameweek Selector
+          <div className="mx-auto mt-5 max-w-6xl">
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="rounded-[24px] border border-white/10 bg-white/5 p-4 text-center shadow-[0_12px_32px_rgba(0,0,0,0.18)]">
+                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-200">
+                  Mode
+                </div>
+
+                <div className="relative mt-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRangeMenuOpen((prev) => !prev);
+                      setMatchweekMenuOpen(false);
+                    }}
+                    className="inline-flex w-full items-center justify-center gap-3 rounded-2xl border border-white/10 bg-black/25 px-4 py-3 text-2xl font-bold text-white transition hover:border-emerald-300/30 hover:bg-black/35"
+                  >
+                    <span>{getRangeLabel(range)}</span>
+                    <span className="text-sm text-white/50">
+                      {rangeMenuOpen ? "▲" : "▼"}
+                    </span>
+                  </button>
+
+                  {rangeMenuOpen ? (
+                    <div className="absolute left-4 right-4 top-[72px] z-[100] rounded-2xl border border-white/10 bg-[#0a1220] p-2 shadow-[0_18px_50px_rgba(0,0,0,0.45)] backdrop-blur-xl">
+                      {(["weekly", "all"] as RangeType[]).map((r) => {
+                        const active = range === r;
+
+                        return (
+                          <button
+                            key={r}
+                            type="button"
+                            onClick={() => {
+                              setRange(r);
+                              setRangeMenuOpen(false);
+                              if (r === "all") {
+                                setMatchweekMenuOpen(false);
+                              }
+                            }}
+                            className={`w-full rounded-xl px-4 py-3 text-center text-sm font-semibold transition ${
+                              active
+                                ? "bg-emerald-500/15 text-emerald-200"
+                                : "text-white/80 hover:bg-white/5 hover:text-white"
+                            }`}
+                          >
+                            {getRangeLabel(r)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : null}
+                </div>
               </div>
 
-              <WeekScroller
-                weekOptions={weekOptions}
-                selectedMatchweek={selectedMatchweek}
-                currentMatchweek={currentMatchweek}
-                onSelect={setSelectedMatchweek}
-              />
-            </div>
-          )}
-        </div>
+              <div className="rounded-[24px] border border-white/10 bg-white/5 p-4 text-center shadow-[0_12px_32px_rgba(0,0,0,0.18)]">
+                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-200">
+                  Matchweek
+                </div>
 
+                <div className="relative mt-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (range !== "weekly") return;
+                      setMatchweekMenuOpen((prev) => !prev);
+                      setRangeMenuOpen(false);
+                    }}
+                    className={`inline-flex w-full items-center justify-center gap-3 rounded-2xl border border-white/10 bg-black/25 px-4 py-3 text-2xl font-bold text-white transition ${
+                      range === "weekly"
+                        ? "hover:border-emerald-300/30 hover:bg-black/35"
+                        : "cursor-default opacity-80"
+                    }`}
+                  >
+                    <span>
+                      {range === "weekly"
+                        ? `Week ${selectedMatchweek ?? currentMatchweek ?? "—"}`
+                        : "All Weeks"}
+                    </span>
+                    {range === "weekly" ? (
+                      <span className="text-sm text-white/50">
+                        {matchweekMenuOpen ? "▲" : "▼"}
+                      </span>
+                    ) : null}
+                  </button>
+
+                  {range === "weekly" && matchweekMenuOpen ? (
+                    <div className="absolute left-4 right-4 top-[72px] z-[100] rounded-2xl border border-white/10 bg-[#0a1220] p-2 shadow-[0_18px_50px_rgba(0,0,0,0.45)] backdrop-blur-xl">
+                      <div className="max-h-64 overflow-y-auto">
+                        {weekOptions.map((week) => {
+                          const active = selectedMatchweek === week;
+
+                          return (
+                            <button
+                              key={week}
+                              type="button"
+                              onClick={() => {
+                                setSelectedMatchweek(week);
+                                setMatchweekMenuOpen(false);
+                              }}
+                              className={`w-full rounded-xl px-4 py-3 text-center text-sm font-semibold transition ${
+                                active
+                                  ? "bg-emerald-500/15 text-emerald-200"
+                                  : "text-white/80 hover:bg-white/5 hover:text-white"
+                              }`}
+                            >
+                              Week {week}
+                              {currentMatchweek === week ? " • Current" : ""}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className="rounded-[24px] border border-white/10 bg-white/5 p-4 text-center shadow-[0_12px_32px_rgba(0,0,0,0.18)]">
+                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-indigo-200">
+                  Picks
+                </div>
+
+                <div className="mt-3 text-2xl font-bold text-white">
+                  {Number.isInteger(entriesShown)
+                    ? entriesShown
+                    : entriesShown.toFixed(1)}{" "}
+                  Entries
+                </div>
+
+                <div className="mt-1 text-sm text-white/55">
+                  {range === "weekly"
+                    ? "Total entries in selected week"
+                    : "Total entries shown"}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div className="mx-auto max-w-7xl px-4 pb-10">
         {initialLoading ? (
           <div className="mt-6 space-y-3">
             {Array.from({ length: 6 }).map((_, i) => (
@@ -353,66 +411,80 @@ export default function LeaderboardPage() {
         ) : (
           <>
             {top3.length > 0 && (
-              <div className="mt-8 grid gap-4 lg:grid-cols-3">
-                {top3.map((p, i) => (
-                  <div
-                    key={p.userId || `top-${i}`}
-                    className={`rounded-3xl border bg-gradient-to-br p-5 ${getGlow(i)} ${
-                      isCurrentUserRow(p, session)
-                        ? "ring-2 ring-emerald-400/60 shadow-[0_0_24px_rgba(16,185,129,0.2)]"
-                        : ""
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="text-lg font-black">{getRankIcon(i)}</div>
-
-                      <div className="flex flex-col items-end gap-2">
-                        {getTopPercent(i, rows.length) && (
-                          <div className="rounded-full border border-emerald-400/20 bg-emerald-500/10 px-2.5 py-1 text-xs text-emerald-300">
-                            {getTopPercent(i, rows.length)}
-                          </div>
-                        )}
-
-                        {isCurrentUserRow(p, session) && (
-                          <div className="rounded-full border border-emerald-300/20 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-bold text-emerald-200">
-                            You
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="mt-4 flex items-center gap-3">
-                      {p.userImage ? (
-                        <Image
-                          src={p.userImage}
-                          alt={getSafeName(p)}
-                          width={60}
-                          height={60}
-                          className="rounded-xl object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-indigo-500/20 font-bold">
-                          {getInitials(p.userName)}
-                        </div>
-                      )}
-
-                      <div>
-                        <div className="font-bold">{getSafeName(p)}</div>
-                        <div className="text-sm text-white/50">
-                          {getRecordValue(p)}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="mt-5 grid grid-cols-2 gap-3">
-                      <Stat label="Points" value={getPointsValue(p).toFixed(2)} />
-                      <Stat label="Win %" value={`${getWinPctValue(p)}%`} />
-                      <Stat label="Correct" value={p.correctScores ?? 0} />
-                      <Stat label="Pending" value={p.pending ?? 0} />
-                    </div>
+              <>
+                <div className="mt-8 mb-4 text-center">
+                  <div className="inline-flex rounded-full border border-amber-400/20 bg-amber-500/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-amber-200">
+                    Top 3
                   </div>
-                ))}
-              </div>
+                  <h2 className="mt-3 text-2xl font-black uppercase tracking-[0.18em] text-white sm:text-3xl">
+                    Podium Leaders
+                  </h2>
+                  <p className="mt-2 text-sm text-white/55">
+                    The current front-runners for this view
+                  </p>
+                </div>
+
+                <div className="grid gap-4 lg:grid-cols-3">
+                  {top3.map((p, i) => (
+                    <div
+                      key={p.userId || `top-${i}`}
+                      className={`rounded-3xl border bg-gradient-to-br p-5 ${getGlow(i)} ${
+                        isCurrentUserRow(p, session)
+                          ? "ring-2 ring-emerald-400/60 shadow-[0_0_24px_rgba(16,185,129,0.2)]"
+                          : ""
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="text-lg font-black">{getRankIcon(i)}</div>
+
+                        <div className="flex flex-col items-end gap-2">
+                          {getTopPercent(i, rows.length) && (
+                            <div className="rounded-full border border-emerald-400/20 bg-emerald-500/10 px-2.5 py-1 text-xs text-emerald-300">
+                              {getTopPercent(i, rows.length)}
+                            </div>
+                          )}
+
+                          {isCurrentUserRow(p, session) && (
+                            <div className="rounded-full border border-emerald-300/20 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-bold text-emerald-200">
+                              You
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="mt-4 flex items-center gap-3">
+                        {p.userImage ? (
+                          <Image
+                            src={p.userImage}
+                            alt={getSafeName(p)}
+                            width={60}
+                            height={60}
+                            className="rounded-xl object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-indigo-500/20 font-bold">
+                            {getInitials(p.userName)}
+                          </div>
+                        )}
+
+                        <div>
+                          <div className="font-bold">{getSafeName(p)}</div>
+                          <div className="text-sm text-white/50">
+                            {getRecordValue(p)}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-5 grid grid-cols-2 gap-3">
+                        <Stat label="Points" value={getPointsValue(p).toFixed(2)} />
+                        <Stat label="Win %" value={`${getWinPctValue(p)}%`} />
+                        <Stat label="Correct" value={p.correctScores ?? 0} />
+                        <Stat label="Pending" value={p.pending ?? 0} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
             )}
 
             <div className="mt-6 space-y-3">
@@ -481,10 +553,14 @@ export default function LeaderboardPage() {
               </div>
 
               {remainingRows.map((p, i) => (
-                <div
-                  key={p.userId || `row-${i}`}
-                  className="rounded-2xl border border-white/10 bg-white/5 p-4 transition"
-                >
+  <div
+    key={p.userId || `row-${i}`}
+    className={`rounded-2xl border p-4 transition ${
+      isCurrentUserRow(p, session)
+        ? "border-emerald-400/35 bg-emerald-500/10 shadow-[0_0_20px_rgba(16,185,129,0.14)]"
+        : "border-white/10 bg-white/5"
+    }`}
+  >
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                     <div className="flex items-center gap-4">
                       <div className="w-10 font-bold">
@@ -506,11 +582,20 @@ export default function LeaderboardPage() {
                       )}
 
                       <div>
-                        <div className="font-bold">{getSafeName(p)}</div>
-                        <div className="text-xs text-white/50">
-                          Record: {getRecordValue(p)}
-                        </div>
-                      </div>
+  <div className="flex items-center gap-2">
+    <div className="font-bold">{getSafeName(p)}</div>
+
+    {isCurrentUserRow(p, session) && (
+      <span className="rounded-full border border-emerald-300/20 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-200">
+        You
+      </span>
+    )}
+  </div>
+
+  <div className="text-xs text-white/50">
+    Record: {getRecordValue(p)}
+  </div>
+</div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-5 lg:mt-0">
