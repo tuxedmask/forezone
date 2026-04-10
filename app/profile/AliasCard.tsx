@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function AliasCard({
@@ -20,6 +20,59 @@ export default function AliasCard({
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [checking, setChecking] = useState(false);
+  const [availability, setAvailability] = useState<{
+    available: boolean;
+    message: string;
+  } | null>(null);
+
+  const trimmedAlias = useMemo(() => alias.trim(), [alias]);
+  const unchanged = trimmedAlias === (currentAlias ?? "").trim();
+
+  useEffect(() => {
+    setMessage("");
+    setError("");
+
+    if (!trimmedAlias) {
+      setAvailability(null);
+      return;
+    }
+
+    if (unchanged) {
+      setAvailability({
+        available: true,
+        message: "This is your current alias.",
+      });
+      return;
+    }
+
+    const timeout = setTimeout(async () => {
+      try {
+        setChecking(true);
+
+        const res = await fetch(
+          `/api/profile/alias/check?alias=${encodeURIComponent(trimmedAlias)}`,
+          { cache: "no-store" }
+        );
+
+        const data = await res.json();
+
+        setAvailability({
+          available: Boolean(data?.available),
+          message: String(data?.message || ""),
+        });
+      } catch {
+        setAvailability({
+          available: false,
+          message: "Could not check alias right now.",
+        });
+      } finally {
+        setChecking(false);
+      }
+    }, 350);
+
+    return () => clearTimeout(timeout);
+  }, [trimmedAlias, currentAlias, unchanged]);
 
   async function saveAlias() {
     try {
@@ -91,10 +144,26 @@ export default function AliasCard({
           className="rounded-xl border border-[#31294c] bg-[#0d0a17] px-4 py-3 text-white outline-none placeholder:text-[#7f78a8]"
         />
 
+        {checking ? (
+          <div className="text-sm text-[#c7c3da]">Checking availability...</div>
+        ) : availability?.message ? (
+          <div
+            className={`text-sm ${
+              availability.available ? "text-emerald-300" : "text-red-300"
+            }`}
+          >
+            {availability.message}
+          </div>
+        ) : null}
+
         <button
           type="button"
           onClick={saveAlias}
-          disabled={saving}
+          disabled={
+            saving ||
+            !trimmedAlias ||
+            (!unchanged && availability?.available === false)
+          }
           className="rounded-xl border border-indigo-500/25 bg-indigo-500/10 px-4 py-3 text-sm font-semibold text-white transition hover:bg-indigo-500/20 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {saving ? "Saving..." : "Save Alias"}

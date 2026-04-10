@@ -43,7 +43,30 @@ export async function PATCH(req: Request) {
     const allowed = /^[a-zA-Z0-9 _.-]+$/;
     if (!allowed.test(alias)) {
       return NextResponse.json(
-        { error: "Use only letters, numbers, spaces, dots, dashes, and underscores." },
+        {
+          error:
+            "Use only letters, numbers, spaces, dots, dashes, and underscores.",
+        },
+        { status: 400 }
+      );
+    }
+
+    const normalizedAlias = alias.toLowerCase();
+
+    const { data: existingAlias, error: existingAliasError } = await supabase
+      .from("users")
+      .select("id, alias")
+      .neq("id", appUserId)
+      .ilike("alias", normalizedAlias)
+      .maybeSingle();
+
+    if (existingAliasError) {
+      throw new Error(existingAliasError.message);
+    }
+
+    if (existingAlias) {
+      return NextResponse.json(
+        { error: "That alias is already taken." },
         { status: 400 }
       );
     }
@@ -53,16 +76,22 @@ export async function PATCH(req: Request) {
       .update({ alias })
       .eq("id", appUserId);
 
-   if (error) {
-  if (error.message.toLowerCase().includes("duplicate")) {
-    return NextResponse.json(
-      { error: "That alias is already taken." },
-      { status: 400 }
-    );
-  }
+    if (error) {
+      const msg = error.message.toLowerCase();
 
-  throw new Error(error.message);
-}
+      if (
+        msg.includes("duplicate") ||
+        msg.includes("unique") ||
+        msg.includes("users_alias_unique")
+      ) {
+        return NextResponse.json(
+          { error: "That alias is already taken." },
+          { status: 400 }
+        );
+      }
+
+      throw new Error(error.message);
+    }
 
     return NextResponse.json({ success: true, alias });
   } catch (error) {
