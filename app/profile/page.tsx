@@ -40,6 +40,13 @@ type SoccerPredictionPickRow = {
   points: number | null;
   correct_score_points: number | null;
   graded: boolean | null;
+  btts_yes_odds?: number | null;
+  btts_no_odds?: number | null;
+  over_2_5_odds?: number | null;
+  under_2_5_odds?: number | null;
+  home_win_odds?: number | null;
+  draw_odds?: number | null;
+  away_win_odds?: number | null;
   home_logo?: string | null;
   away_logo?: string | null;
   kickoff_time?: string | null;

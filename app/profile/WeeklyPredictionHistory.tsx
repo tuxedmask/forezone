@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { getTeamLogo } from "@/lib/soccerTeams";
+import { getProjectedPointsFromScores } from "@/lib/soccerProjectedPoints";
 
 export type WeeklyPredictionPick = {
   id: string;
@@ -19,6 +20,13 @@ export type WeeklyPredictionPick = {
   home_logo?: string | null;
   away_logo?: string | null;
   kickoff_time?: string | null;
+  btts_yes_odds?: number | null;
+  btts_no_odds?: number | null;
+  over_2_5_odds?: number | null;
+  under_2_5_odds?: number | null;
+  home_win_odds?: number | null;
+  draw_odds?: number | null;
+  away_win_odds?: number | null;
 };
 
 export type WeeklyEntryWithPicks = {
@@ -218,6 +226,72 @@ function PickRowCard({ pick }: { pick: WeeklyPredictionPick }) {
 
   const points = Number(pick.points || 0);
 
+  const hasResult =
+  typeof pick.actual_home_score === "number" &&
+  typeof pick.actual_away_score === "number";
+
+function get1x2(home: number, away: number) {
+  if (home > away) return "1";
+  if (home < away) return "2";
+  return "X";
+}
+function get1x2Label(value: "1" | "X" | "2") {
+  if (value === "1") return "Home";
+  if (value === "2") return "Away";
+  return "Draw";
+}
+
+function getOU(home: number, away: number) {
+  return home + away > 2.5 ? "Over" : "Under";
+}
+
+function getBTTS(home: number, away: number) {
+  return home > 0 && away > 0 ? "Yes" : "No";
+}
+
+const predHome = pick.predicted_home_score ?? 0;
+const predAway = pick.predicted_away_score ?? 0;
+
+const predicted1x2 = get1x2(predHome, predAway);
+const predictedOU = getOU(predHome, predAway);
+const predictedBTTS = getBTTS(predHome, predAway);
+
+const projectedPoints =
+  pick.predicted_home_score !== null &&
+  pick.predicted_away_score !== null
+    ? getProjectedPointsFromScores({
+        homeScore: pick.predicted_home_score,
+        awayScore: pick.predicted_away_score,
+        btts_yes_odds: pick.btts_yes_odds ?? null,
+        btts_no_odds: pick.btts_no_odds ?? null,
+        over_2_5_odds: pick.over_2_5_odds ?? null,
+        under_2_5_odds: pick.under_2_5_odds ?? null,
+        home_win_odds: pick.home_win_odds ?? null,
+        draw_odds: pick.draw_odds ?? null,
+        away_win_odds: pick.away_win_odds ?? null,
+      })
+    : null;
+
+const displayPoints = pick.graded
+  ? Number(pick.points || 0)
+  : Number(projectedPoints?.total || 0);
+
+const actual1x2 = hasResult
+  ? get1x2(pick.actual_home_score!, pick.actual_away_score!)
+  : null;
+
+const actualOU = hasResult
+  ? getOU(pick.actual_home_score!, pick.actual_away_score!)
+  : null;
+
+const actualBTTS = hasResult
+  ? getBTTS(pick.actual_home_score!, pick.actual_away_score!)
+  : null;
+
+const correct1x2 = hasResult && predicted1x2 === actual1x2;
+const correctOU = hasResult && predictedOU === actualOU;
+const correctBTTS = hasResult && predictedBTTS === actualBTTS;
+
   function formatKickoff(value: string | null) {
     if (!value) return "Kickoff TBD";
 
@@ -293,31 +367,87 @@ function PickRowCard({ pick }: { pick: WeeklyPredictionPick }) {
           />
 
           {/* POINTS */}
-          <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-3 text-center">
-            <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#9f96c7]">
-              Points
-            </div>
+          {/* 🔥 PROJECTED / FINAL POINTS */}
+<div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-center">
+  <span className="text-sm text-emerald-200/80">
+    {pick.graded ? "Points:" : "Projected:"}
+  </span>{" "}
+  <span className="text-2xl font-extrabold text-white">
+    {displayPoints.toFixed(2)}
+  </span>
+  <span className="ml-1 text-sm font-semibold text-emerald-300">pts</span>
+</div>
 
-            <div
-              className={`mt-3 text-3xl font-black leading-none tracking-tight ${
-                points > 0
-                  ? "text-indigo-300 drop-shadow-[0_0_14px_rgba(129,140,248,0.25)]"
-                  : "text-white/35"
-              }`}
-            >
-              {points.toFixed(2)}
-            </div>
+{/* 🔥 BREAKDOWN */}
+<div className="grid grid-cols-4 gap-2 text-xs">
+  {/* 1X2 */}
+  <div
+  className={`p-3 text-center rounded-2xl border ${
+    correct1x2
+      ? "border-emerald-400/40 bg-emerald-500/15 shadow-[0_0_18px_rgba(16,185,129,0.25)]"
+      : "border-white/8 bg-white/[0.04]"
+  }`}
+>
+  <div className="text-[10px] tracking-[0.22em] text-white/45">1X2</div>
+  <div className="mt-1 font-bold text-white">
+  {get1x2Label(predicted1x2)}
+</div>
+  <div className={`mt-1 text-[11px] font-semibold ${correct1x2 ? "text-emerald-300" : "text-white/35"}`}>
+    +{projectedPoints?.onextwoBonus ?? 0}
+  </div>
+</div>
 
-            {pick.graded ? (
-              <div className="mt-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#9f96c7]">
-                Graded
-              </div>
-            ) : (
-              <div className="mt-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-300">
-                Pending
-              </div>
-            )}
-          </div>
+  {/* O/U */}
+  <div
+  className={`p-3 text-center rounded-2xl border ${
+    correctOU
+      ? "border-emerald-400/40 bg-emerald-500/15 shadow-[0_0_18px_rgba(16,185,129,0.25)]"
+      : "border-white/8 bg-white/[0.04]"
+  }`}
+>
+  <div className="text-[10px] tracking-[0.22em] text-white/45">O/U</div>
+  <div className="mt-1 font-bold text-white">
+    {predictedOU === "Over" ? "Over" : "Under"}
+  </div>
+  <div className={`mt-1 text-[11px] font-semibold ${correctOU ? "text-emerald-300" : "text-white/35"}`}>
+    +{projectedPoints?.ouBonus ?? 0}
+  </div>
+</div>
+
+  {/* BTTS */}
+ <div
+  className={`p-3 text-center rounded-2xl border ${
+    correctBTTS
+      ? "border-emerald-400/40 bg-emerald-500/15 shadow-[0_0_18px_rgba(16,185,129,0.25)]"
+      : "border-white/8 bg-white/[0.04]"
+  }`}
+>
+  <div className="text-[10px] tracking-[0.22em] text-white/45">BTTS</div>
+  <div className="mt-1 font-bold text-white">
+    {predictedBTTS === "Yes" ? "Yes" : "No"}
+  </div>
+  <div className={`mt-1 text-[11px] font-semibold ${correctBTTS ? "text-emerald-300" : "text-white/35"}`}>
+    +{projectedPoints?.bttsBonus ?? 0}
+  </div>
+</div>
+
+  {/* CORRECT SCORE */}
+  <div
+  className={`p-3 text-center rounded-2xl border ${
+    exactHit
+      ? "border-emerald-400/50 bg-emerald-500/20 shadow-[0_0_22px_rgba(16,185,129,0.35)]"
+      : "border-white/8 bg-white/[0.04]"
+  }`}
+>
+  <div className="text-[10px] tracking-[0.22em] text-white/45">CS</div>
+ <div className="mt-1 font-bold text-white">
+  {pick.graded ? (exactHit ? "🎯" : "x") : "-"}
+</div>
+  <div className={`mt-1 text-[11px] font-semibold ${exactHit ? "text-emerald-300" : "text-white/35"}`}>
+    +{projectedPoints?.correctScoreBonus ?? 0}
+  </div>
+</div>
+</div>
         </div>
       </div>
     </div>
