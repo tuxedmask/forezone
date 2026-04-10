@@ -118,17 +118,18 @@ export async function GET(req: Request) {
     }
 
     const userMap: Record<
-      string,
-      {
-        userId: string;
-        userName: string;
-        userImage: string | null;
-        totalPoints: number;
-        correctScores: number;
-        picksCount: number;
-        pending: number;
-      }
-    > = {};
+  string,
+  {
+    userId: string;
+    userName: string;
+    userImage: string | null;
+    alias: string | null;
+    totalPoints: number;
+    correctScores: number;
+    picksCount: number;
+    pending: number;
+  }
+> = {};
 
     const entryToUserId = new Map<string, string>();
 
