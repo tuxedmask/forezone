@@ -91,10 +91,10 @@ export async function GET(req: Request) {
 
     const userIds = [...new Set(entries.map((e) => e.user_id))];
 
-    const { data: users, error: usersError } = await supabase
-      .from("users")
-      .select("id, name, image")
-      .in("id", userIds);
+   const { data: users, error: usersError } = await supabase
+  .from("users")
+  .select("id, name, image, alias")
+  .in("id", userIds);
 
     if (usersError) {
       console.error("USERS ERROR:", usersError);
@@ -104,13 +104,17 @@ export async function GET(req: Request) {
       );
     }
 
-    const userInfo: Record<string, { name: string; image: string | null }> = {};
+   const userInfo: Record<
+  string,
+  { name: string; image: string | null; alias: string | null }
+> = {};
 
     for (const u of users || []) {
       userInfo[u.id] = {
-        name: u.name || "User",
-        image: u.image || null,
-      };
+  name: u.name || "User",
+  image: u.image || null,
+  alias: (u as any).alias || null,
+};
     }
 
     const userMap: Record<
@@ -133,14 +137,15 @@ export async function GET(req: Request) {
 
       if (!userMap[entry.user_id]) {
         userMap[entry.user_id] = {
-          userId: entry.user_id,
-          userName: userInfo[entry.user_id]?.name || "User",
-          userImage: userInfo[entry.user_id]?.image || null,
-          totalPoints: 0,
-          correctScores: 0,
-          picksCount: 0,
-          pending: 0,
-        };
+  userId: entry.user_id,
+  userName: userInfo[entry.user_id]?.name || "User",
+  userImage: userInfo[entry.user_id]?.image || null,
+  alias: userInfo[entry.user_id]?.alias || null,
+  totalPoints: 0,
+  correctScores: 0,
+  picksCount: 0,
+  pending: 0,
+};
       }
     }
 

@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
+import AliasModalTrigger from "./AliasModalTrigger";
 import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 import LinkAccountsCard from "./LinkAccountsCard";
@@ -159,19 +160,25 @@ export default async function ProfilePage() {
   const provider = (session.user as any).provider as string | undefined;
 
   const [
-    { data: linkedAccounts, error: linkedAccountsError },
-    { data: entries, error: entriesError },
-  ] = await Promise.all([
-    supabase
-      .from("user_accounts")
-      .select("provider, email")
-      .eq("user_id", appUserId),
-    supabase
-      .from("soccer_prediction_entries")
-      .select("*")
-      .eq("user_id", appUserId)
-      .order("created_at", { ascending: false }),
-  ]);
+  { data: linkedAccounts, error: linkedAccountsError },
+  { data: entries, error: entriesError },
+  { data: userRow, error: userError },
+] = await Promise.all([
+  supabase
+    .from("user_accounts")
+    .select("provider, email")
+    .eq("user_id", appUserId),
+  supabase
+    .from("soccer_prediction_entries")
+    .select("*")
+    .eq("user_id", appUserId)
+    .order("created_at", { ascending: false }),
+  supabase
+    .from("users")
+    .select("alias")
+    .eq("id", appUserId)
+    .maybeSingle(),
+]);
 
   if (linkedAccountsError) {
     throw new Error(linkedAccountsError.message);
@@ -284,7 +291,8 @@ export default async function ProfilePage() {
 
   const stats = calculateEntryStats(soccerEntries, entryPicks);
 
-  const displayName = session.user.name || "User";
+  const displayAlias = (userRow as { alias?: string | null } | null)?.alias ?? null;
+const displayName = displayAlias || session.user.name || "User";
   const displayImage = session.user.image || null;
 
   return (
@@ -314,14 +322,26 @@ export default async function ProfilePage() {
                 </div>
               )}
 
-              <h2 className="mt-4 text-2xl font-semibold">{displayName}</h2>
-              <p className="mt-1 text-sm text-[#9f96c7]">
-                {provider === "discord"
-                  ? "Signed in with Discord"
-                  : provider === "twitch"
-                  ? "Signed in with Twitch"
-                  : "Connected account"}
-              </p>
+              <div className="mt-4 flex items-center justify-center gap-3">
+  <h2 className="text-2xl font-semibold">{displayName}</h2>
+
+  <AliasModalTrigger
+    currentAlias={displayAlias}
+    fallbackName={session.user.name || "User"}
+  />
+</div>
+
+<p className="mt-1 text-sm text-[#9f96c7]">
+  {provider === "discord"
+    ? "Signed in with Discord"
+    : provider === "twitch"
+    ? "Signed in with Twitch"
+    : provider === "google"
+    ? "Signed in with Google"
+    : "Connected account"}
+</p>
+
+
 
               <div className="mt-5 w-full rounded-2xl border border-[#31294c] bg-[linear-gradient(180deg,#120f1d,#0e0b18)] px-4 py-5 text-center shadow-[0_0_18px_rgba(0,0,0,0.12)]">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#9f96c7]">
@@ -366,19 +386,21 @@ export default async function ProfilePage() {
             </div>
 
             <div className="mt-6 rounded-2xl border border-[#31294c] bg-[linear-gradient(180deg,#120f1d,#0e0b18)] p-4 shadow-[0_0_18px_rgba(0,0,0,0.12)]">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#9f96c7]">
-                Current Focus
-              </div>
-              <div className="mt-3 text-lg font-semibold text-white">
-                Soccer predictions
-              </div>
-              <p className="mt-2 text-sm text-[#c7c3da]">
-                Weekly score predictions, points, and graded results are the
-                main focus right now.
-              </p>
-            </div>
+  <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#9f96c7]">
+    Current Focus
+  </div>
+  <div className="mt-3 text-lg font-semibold text-white">
+    Soccer predictions
+  </div>
+  <p className="mt-2 text-sm text-[#c7c3da]">
+    Weekly score predictions, points, and graded results are the
+    main focus right now.
+  </p>
+</div>
 
-            <LinkAccountsCard accounts={linkedAccountsData} />
+
+
+<LinkAccountsCard accounts={linkedAccountsData} />
           </div>
 
           <WeeklyPredictionHistory entries={weeklyEntries} />

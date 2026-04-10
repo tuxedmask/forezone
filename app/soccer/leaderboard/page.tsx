@@ -9,6 +9,7 @@ type RangeType = "weekly" | "all";
 type LeaderboardRow = {
   rank?: number;
   userId?: string | null;
+  alias?: string | null;
   userName?: string | null;
   userImage?: string | null;
   totalPoints?: number | null;
@@ -47,7 +48,7 @@ function getTopPercent(index: number, total: number) {
 }
 
 function getSafeName(row: LeaderboardRow) {
-  return (row.userName || "User").trim() || "User";
+  return (row.alias || row.userName || "User").trim() || "User";
 }
 
 function getInitials(name?: string | null) {
