@@ -7,6 +7,10 @@ function cleanAlias(value: unknown) {
   return String(value ?? "").trim();
 }
 
+function normalizeAlias(value: string) {
+  return value.trim().toLowerCase();
+}
+
 export async function GET(req: Request) {
   try {
     const session = await getServerSession(authOptions);
@@ -45,18 +49,25 @@ export async function GET(req: Request) {
       });
     }
 
-    const { data, error } = await supabase
+    const normalizedAlias = normalizeAlias(alias);
+
+    const { data: users, error } = await supabase
       .from("users")
-      .select("id")
-      .neq("id", appUserId)
-      .ilike("alias", alias)
-      .maybeSingle();
+      .select("id, name, alias")
+      .neq("id", appUserId);
 
     if (error) {
       throw new Error(error.message);
     }
 
-    if (data) {
+    const taken = (users ?? []).some((user) => {
+      const otherAlias = user.alias ? normalizeAlias(String(user.alias)) : null;
+      const otherName = user.name ? normalizeAlias(String(user.name)) : null;
+
+      return otherAlias === normalizedAlias || otherName === normalizedAlias;
+    });
+
+    if (taken) {
       return NextResponse.json({
         available: false,
         message: "That alias is already taken.",

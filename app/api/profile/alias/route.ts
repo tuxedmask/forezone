@@ -7,6 +7,10 @@ function cleanAlias(value: unknown) {
   return String(value ?? "").trim();
 }
 
+function normalizeAlias(value: string) {
+  return value.trim().toLowerCase();
+}
+
 export async function PATCH(req: Request) {
   try {
     const session = await getServerSession(authOptions);
@@ -51,20 +55,25 @@ export async function PATCH(req: Request) {
       );
     }
 
-    const normalizedAlias = alias.toLowerCase();
+    const normalizedAlias = normalizeAlias(alias);
 
-    const { data: existingAlias, error: existingAliasError } = await supabase
+    const { data: users, error: usersError } = await supabase
       .from("users")
-      .select("id, alias")
-      .neq("id", appUserId)
-      .ilike("alias", normalizedAlias)
-      .maybeSingle();
+      .select("id, name, alias")
+      .neq("id", appUserId);
 
-    if (existingAliasError) {
-      throw new Error(existingAliasError.message);
+    if (usersError) {
+      throw new Error(usersError.message);
     }
 
-    if (existingAlias) {
+    const taken = (users ?? []).some((user) => {
+      const otherAlias = user.alias ? normalizeAlias(String(user.alias)) : null;
+      const otherName = user.name ? normalizeAlias(String(user.name)) : null;
+
+      return otherAlias === normalizedAlias || otherName === normalizedAlias;
+    });
+
+    if (taken) {
       return NextResponse.json(
         { error: "That alias is already taken." },
         { status: 400 }
