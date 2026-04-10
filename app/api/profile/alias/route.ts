@@ -53,9 +53,16 @@ export async function PATCH(req: Request) {
       .update({ alias })
       .eq("id", appUserId);
 
-    if (error) {
-      throw new Error(error.message);
-    }
+   if (error) {
+  if (error.message.toLowerCase().includes("duplicate")) {
+    return NextResponse.json(
+      { error: "That alias is already taken." },
+      { status: 400 }
+    );
+  }
+
+  throw new Error(error.message);
+}
 
     return NextResponse.json({ success: true, alias });
   } catch (error) {
