@@ -4,11 +4,13 @@ import Image from "next/image";
 import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 
 export default function LoginPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-
+const searchParams = useSearchParams();
+const authError = searchParams.get("error");
   useEffect(() => {
     if (status === "authenticated") {
       router.push("/");
@@ -256,7 +258,22 @@ export default function LoginPage() {
                 Use the account you want tied to your Fore Zone profile.
               </p>
             </div>
-
+{authError === "twitch" ? (
+  <div
+    style={{
+      marginBottom: 16,
+      padding: "14px 16px",
+      borderRadius: 16,
+      border: "1px solid rgba(239,68,68,0.28)",
+      background: "rgba(127,29,29,0.18)",
+      color: "#fecaca",
+      fontSize: 14,
+      lineHeight: 1.6,
+    }}
+  >
+    Twitch sign-in was blocked or interrupted by your browser. Try again, or open Fore Zone in an incognito/private window and sign in with Twitch there.
+  </div>
+) : null}
             <div style={{ display: "grid", gap: 14 }}>
               <button
                 type="button"
