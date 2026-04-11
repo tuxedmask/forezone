@@ -42,39 +42,6 @@ export type WeeklyEntryWithPicks = {
   picks: WeeklyPredictionPick[];
 };
 
-function formatDateTime(value: string | null) {
-  if (!value) return "-";
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-
-  return new Intl.DateTimeFormat("en-US", {
-    year: "numeric",
-    month: "numeric",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-    timeZone: "America/New_York",
-  }).format(date);
-}
-
-function formatKickoff(value: string | null) {
-  if (!value) return "Kickoff TBD";
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-    timeZone: "America/New_York",
-  }).format(date);
-}
-
 function getStatusBadge(graded: boolean, status: string | null) {
   if (graded) {
     return "border border-emerald-400/30 bg-emerald-500/15 text-emerald-300";
@@ -129,169 +96,15 @@ function getTeamShortName(name: string | null) {
     .toUpperCase();
 }
 
-function TeamDisplay({
-  team,
-  side,
-  logo,
-}: {
-  team: string | null;
-  side: "home" | "away";
-  logo?: string | null;
-}) {
-  const fallbackLogo = getTeamLogo(team);
-  const [imgSrc, setImgSrc] = useState<string | null>(logo || fallbackLogo);
-
-  return (
-    <div className="flex flex-col items-center text-center">
-      <div
-        className={`flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl border shadow-[0_0_18px_rgba(0,0,0,0.14)] sm:h-16 sm:w-16 ${
-          side === "home"
-            ? "border-indigo-400/25 bg-indigo-500/10"
-            : "border-cyan-400/25 bg-cyan-500/10"
-        }`}
-      >
-        {imgSrc ? (
-          <img
-            src={imgSrc}
-            alt={team || "team"}
-            className="h-[72%] w-[72%] object-contain"
-            onError={() => {
-              if (imgSrc !== fallbackLogo && fallbackLogo) {
-                setImgSrc(fallbackLogo);
-              } else {
-                setImgSrc(null);
-              }
-            }}
-          />
-        ) : (
-          <span className="text-xs font-black tracking-wide text-white">
-            {getTeamShortName(team)}
-          </span>
-        )}
-      </div>
-
-      <div className="mt-2 max-w-[120px] text-sm font-bold text-white">
-        {team || "Unknown Team"}
-      </div>
-
-      <div className="mt-1 text-[10px] uppercase tracking-[0.18em] text-[#8f87ae]">
-        {side}
-      </div>
-    </div>
-  );
-}
-
-function BigScoreRow({
-  title,
-  homeScore,
-  awayScore,
-  accent,
-}: {
-  title: string;
-  homeScore: number | null;
-  awayScore: number | null;
-  accent: "prediction" | "final";
-}) {
-  const accentClass =
-    accent === "prediction"
-      ? "border-indigo-400/25 bg-indigo-500/10"
-      : "border-emerald-400/25 bg-emerald-500/10";
-
-  return (
-    <div className={`rounded-2xl border ${accentClass} p-3`}>
-      <div className="text-center text-[10px] font-semibold uppercase tracking-[0.22em] text-[#9f96c7]">
-        {title}
-      </div>
-
-      <div className="mt-3 flex items-center justify-center gap-3">
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/5 text-xl font-black text-white sm:h-14 sm:w-14 sm:text-2xl">
-          {homeScore ?? "-"}
-        </div>
-
-        <div className="text-lg font-black text-[#8e86aa]">-</div>
-
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/5 text-xl font-black text-white sm:h-14 sm:w-14 sm:text-2xl">
-          {awayScore ?? "-"}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function PickRowCard({ pick }: { pick: WeeklyPredictionPick }) {
   const exactHit =
     Boolean(pick.graded) &&
     pick.predicted_home_score === pick.actual_home_score &&
     pick.predicted_away_score === pick.actual_away_score;
 
-  const points = Number(pick.points || 0);
-
   const hasResult =
-  typeof pick.actual_home_score === "number" &&
-  typeof pick.actual_away_score === "number";
-
-function get1x2(home: number, away: number) {
-  if (home > away) return "1";
-  if (home < away) return "2";
-  return "X";
-}
-function get1x2Label(value: "1" | "X" | "2") {
-  if (value === "1") return "Home";
-  if (value === "2") return "Away";
-  return "Draw";
-}
-
-function getOU(home: number, away: number) {
-  return home + away > 2.5 ? "Over" : "Under";
-}
-
-function getBTTS(home: number, away: number) {
-  return home > 0 && away > 0 ? "Yes" : "No";
-}
-
-const predHome = pick.predicted_home_score ?? 0;
-const predAway = pick.predicted_away_score ?? 0;
-
-const predicted1x2 = get1x2(predHome, predAway);
-const predictedOU = getOU(predHome, predAway);
-const predictedBTTS = getBTTS(predHome, predAway);
-
-const projectedPoints =
-  pick.predicted_home_score !== null &&
-  pick.predicted_away_score !== null
-    ? getProjectedPointsFromScores({
-        homeScore: pick.predicted_home_score,
-        awayScore: pick.predicted_away_score,
-        btts_yes_odds: pick.btts_yes_odds ?? null,
-        btts_no_odds: pick.btts_no_odds ?? null,
-        over_2_5_odds: pick.over_2_5_odds ?? null,
-        under_2_5_odds: pick.under_2_5_odds ?? null,
-        home_win_odds: pick.home_win_odds ?? null,
-        draw_odds: pick.draw_odds ?? null,
-        away_win_odds: pick.away_win_odds ?? null,
-      })
-    : null;
-
-const displayPoints =
-  pick.points !== null && pick.points !== undefined
-    ? Number(pick.points)
-    : Number(projectedPoints?.total || 0);
-
-const actual1x2 = hasResult
-  ? get1x2(pick.actual_home_score!, pick.actual_away_score!)
-  : null;
-
-const actualOU = hasResult
-  ? getOU(pick.actual_home_score!, pick.actual_away_score!)
-  : null;
-
-const actualBTTS = hasResult
-  ? getBTTS(pick.actual_home_score!, pick.actual_away_score!)
-  : null;
-
-const correct1x2 = hasResult && predicted1x2 === actual1x2;
-const correctOU = hasResult && predictedOU === actualOU;
-const correctBTTS = hasResult && predictedBTTS === actualBTTS;
+    typeof pick.actual_home_score === "number" &&
+    typeof pick.actual_away_score === "number";
 
   function formatKickoff(value: string | null) {
     if (!value) return "Kickoff TBD";
@@ -311,144 +124,280 @@ const correctBTTS = hasResult && predictedBTTS === actualBTTS;
     );
   }
 
+  function get1x2(home: number, away: number) {
+    if (home > away) return "1";
+    if (home < away) return "2";
+    return "X";
+  }
+
+  function get1x2Label(value: "1" | "X" | "2") {
+    if (value === "1") return "Home";
+    if (value === "2") return "Away";
+    return "Draw";
+  }
+
+  function getOU(home: number, away: number) {
+    return home + away > 2.5 ? "Over" : "Under";
+  }
+
+  function getBTTS(home: number, away: number) {
+    return home > 0 && away > 0 ? "Yes" : "No";
+  }
+
+  const predHome = pick.predicted_home_score ?? 0;
+  const predAway = pick.predicted_away_score ?? 0;
+
+  const predicted1x2 = get1x2(predHome, predAway);
+  const predictedOU = getOU(predHome, predAway);
+  const predictedBTTS = getBTTS(predHome, predAway);
+
+  const projectedPoints =
+    pick.predicted_home_score !== null &&
+    pick.predicted_away_score !== null
+      ? getProjectedPointsFromScores({
+          homeScore: pick.predicted_home_score,
+          awayScore: pick.predicted_away_score,
+          btts_yes_odds: pick.btts_yes_odds ?? null,
+          btts_no_odds: pick.btts_no_odds ?? null,
+          over_2_5_odds: pick.over_2_5_odds ?? null,
+          under_2_5_odds: pick.under_2_5_odds ?? null,
+          home_win_odds: pick.home_win_odds ?? null,
+          draw_odds: pick.draw_odds ?? null,
+          away_win_odds: pick.away_win_odds ?? null,
+        })
+      : null;
+
+  const displayPoints =
+    pick.points !== null && pick.points !== undefined
+      ? Number(pick.points)
+      : Number(projectedPoints?.total || 0);
+
+  const actual1x2 = hasResult
+    ? get1x2(pick.actual_home_score!, pick.actual_away_score!)
+    : null;
+
+  const actualOU = hasResult
+    ? getOU(pick.actual_home_score!, pick.actual_away_score!)
+    : null;
+
+  const actualBTTS = hasResult
+    ? getBTTS(pick.actual_home_score!, pick.actual_away_score!)
+    : null;
+
+  const correct1x2 = hasResult && predicted1x2 === actual1x2;
+  const correctOU = hasResult && predictedOU === actualOU;
+  const correctBTTS = hasResult && predictedBTTS === actualBTTS;
+
+  const wrong1x2 = hasResult && !correct1x2;
+  const wrongOU = hasResult && !correctOU;
+  const wrongBTTS = hasResult && !correctBTTS;
+  const wrongCS = Boolean(pick.graded) && !exactHit;
+
+  const homeLogo = pick.home_logo || getTeamLogo(pick.home_team);
+  const awayLogo = pick.away_logo || getTeamLogo(pick.away_team);
+
+  const badgeItems: { key: string; label: string; icon: string }[] = [];
+
+  if (exactHit) {
+    badgeItems.push({ key: "cs", label: "Bullseye", icon: "🎯" });
+  }
+
+  if (correctOU) {
+    badgeItems.push({
+      key: "ou",
+      label: predictedOU === "Over" ? "Over" : "Under",
+      icon: predictedOU === "Over" ? "⬆️" : "⬇️",
+    });
+  }
+
+  if (correct1x2) {
+    if (predicted1x2 === "1") {
+      badgeItems.push({ key: "1x2-home", label: "Home", icon: "🏠" });
+    } else if (predicted1x2 === "X") {
+      badgeItems.push({ key: "1x2-draw", label: "Draw", icon: "🤝" });
+    } else {
+      badgeItems.push({ key: "1x2-away", label: "Away", icon: "🚌" });
+    }
+  }
+
+  if (correctBTTS) {
+  badgeItems.push({
+    key: "btts",
+    label: predictedBTTS === "Yes" ? "BTTS" : "BTTS",
+    icon: predictedBTTS === "Yes" ? "✅⚽" : "🚫⚽",
+  });
+}
+
+  function StatBox({
+    label,
+    value,
+    accent = "default",
+    wide = false,
+  }: {
+    label: string;
+    value: React.ReactNode;
+    accent?: "default" | "prediction" | "final" | "points" | "hit" | "miss";
+    wide?: boolean;
+  }) {
+    const styles = {
+      default: "border-white/8 bg-white/[0.04] text-white",
+      prediction: "border-indigo-400/20 bg-indigo-500/10 text-white",
+      final: "border-emerald-400/20 bg-emerald-500/10 text-white",
+      points:
+        "border-cyan-400/30 bg-cyan-500/10 text-cyan-300 shadow-[0_0_18px_rgba(34,211,238,0.10)]",
+      hit:
+        "border-emerald-400/40 bg-emerald-500/15 text-emerald-300 shadow-[0_0_14px_rgba(16,185,129,0.14)]",
+      miss:
+        "border-red-400/35 bg-red-500/10 text-red-200 shadow-[0_0_14px_rgba(248,113,113,0.12)]",
+    };
+
+    return (
+      <div
+        className={`rounded-[18px] border text-center ${styles[accent]} ${
+          wide
+            ? "flex min-h-[72px] w-full flex-col items-center justify-center px-3 py-2"
+            : "min-w-[78px] px-3 py-2"
+        }`}
+      >
+        <div className="text-[9px] uppercase tracking-[0.16em] text-[#9f96c7]">
+          {label}
+        </div>
+        <div
+          className={`mt-1 font-black leading-none ${
+            wide ? "text-[1.3rem]" : "text-[0.95rem]"
+          }`}
+        >
+          {value}
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="group relative overflow-hidden rounded-[24px] border border-[#31294c] bg-[linear-gradient(180deg,#171226,#0f0b19)] shadow-[0_0_24px_rgba(0,0,0,0.14)] transition-all duration-300 hover:shadow-[0_0_35px_rgba(99,102,241,0.18)]">
+<div className="group relative rounded-[26px] border border-[#31294c] bg-[linear-gradient(180deg,#171226,#0f0b19)] p-4 shadow-[0_0_24px_rgba(0,0,0,0.14)] transition-all duration-300 hover:border-indigo-300/30 hover:shadow-[0_0_35px_rgba(99,102,241,0.18)]">       
+       {badgeItems.length > 0 ? (
+  <div className="absolute left-4 -top-3 z-20 flex flex-wrap gap-2">
+    {badgeItems.map((badge) => (
+      <div
+        key={badge.key}
+        className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/40 bg-[#0f0b19] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.18)]"
+      >
+        <span className="text-xs">{badge.icon}</span>
+        <span>{badge.label}</span>
+      </div>
+    ))}
+  </div>
+) : null}
 
-      {/* 🔥 BULLSEYE BADGE */}
-      {exactHit ? (
-        <div className="absolute left-3 top-3 z-10 inline-flex items-center gap-1 rounded-full border border-emerald-400/30 bg-emerald-500/15 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-300 shadow-[0_0_12px_rgba(52,211,153,0.18)] transition-all duration-300 group-hover:shadow-[0_0_18px_rgba(52,211,153,0.35)] group-hover:scale-105">
-          <span className="text-sm">🎯</span>
-          <span>Correct</span>
-        </div>
-      ) : null}
-
-      <div className="px-4 py-5">
-
-        {/* ⏱️ KICKOFF TIME */}
-        <div className="mb-4 text-center text-[10px] font-semibold uppercase tracking-[0.22em] text-[#9f96c7]">
-          {formatKickoff(pick.kickoff_time ?? null)}
-        </div>
-
-        {/* MATCH */}
-        <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-3">
-          <TeamDisplay
-            team={pick.home_team}
-            side="home"
-            logo={pick.home_logo}
-          />
-
-          <div className="pt-5 text-center">
-            <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#8f87ae]">
-              Match
-            </div>
-            <div className="mt-2 text-base font-black text-white">vs</div>
+      <div className="flex items-start justify-between gap-3">
+        {/* LEFT */}
+        <div className="min-w-0 flex-[1.05] pr-3">
+          <div className="mb-3 text-center text-[10px] font-semibold uppercase tracking-[0.22em] text-[#9f96c7]">
+            {formatKickoff(pick.kickoff_time ?? null)}
           </div>
 
-          <TeamDisplay
-            team={pick.away_team}
-            side="away"
-            logo={pick.away_logo}
-          />
+          <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-3">
+            <div className="flex flex-col items-center text-center">
+              <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl border border-indigo-400/25 bg-indigo-500/10">
+                {homeLogo ? (
+                  <img
+                    src={homeLogo}
+                    alt={pick.home_team || "Home team"}
+                    className="h-[72%] w-[72%] object-contain"
+                  />
+                ) : (
+                  <span className="text-xs font-black text-white">
+                    {getTeamShortName(pick.home_team)}
+                  </span>
+                )}
+              </div>
+
+              <div className="mt-2 text-[14px] font-bold leading-tight text-white">
+                {pick.home_team || "Home"}
+              </div>
+
+              <div className="mt-1 text-[10px] uppercase tracking-[0.18em] text-[#8f87ae]">
+                Home
+              </div>
+            </div>
+
+            <div className="pt-5 text-center text-[11px] font-black uppercase tracking-[0.18em] text-[#8f87ae]">
+              vs
+            </div>
+
+            <div className="flex flex-col items-center text-center">
+              <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl border border-cyan-400/25 bg-cyan-500/10">
+                {awayLogo ? (
+                  <img
+                    src={awayLogo}
+                    alt={pick.away_team || "Away team"}
+                    className="h-[72%] w-[72%] object-contain"
+                  />
+                ) : (
+                  <span className="text-xs font-black text-white">
+                    {getTeamShortName(pick.away_team)}
+                  </span>
+                )}
+              </div>
+
+              <div className="mt-2 text-[14px] font-bold leading-tight text-white">
+                {pick.away_team || "Away"}
+              </div>
+
+              <div className="mt-1 text-[10px] uppercase tracking-[0.18em] text-[#8f87ae]">
+                Away
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* SCORES */}
-        <div className="mt-5 grid gap-3">
-          <BigScoreRow
-            title="Prediction"
-            homeScore={pick.predicted_home_score}
-            awayScore={pick.predicted_away_score}
+        <div className="grid shrink-0 grid-cols-4 gap-2.5">
+          <StatBox
+            label="Pred"
+            value={`${pick.predicted_home_score ?? "-"} - ${pick.predicted_away_score ?? "-"}`}
             accent="prediction"
+            wide
           />
 
-          <BigScoreRow
-  title="Final Score"
-  homeScore={pick.actual_home_score}
-  awayScore={pick.actual_away_score}
-  accent="final"
-/>
+          <StatBox
+            label="Final"
+            value={`${pick.actual_home_score ?? "-"} - ${pick.actual_away_score ?? "-"}`}
+            accent="final"
+            wide
+          />
 
-          {/* POINTS */}
-          {/* 🔥 PROJECTED / FINAL POINTS */}
-<div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-center">
-  <span className="text-sm text-emerald-200/80">
-   {pick.points !== null && pick.points !== undefined ? "Points:" : "Projected:"}
-  </span>{" "}
-  <span className="text-2xl font-extrabold text-white">
-    {displayPoints.toFixed(2)}
-  </span>
-  <span className="ml-1 text-sm font-semibold text-emerald-300">pts</span>
-</div>
+          <div className="col-span-2">
+            <StatBox
+              label="Pts"
+              value={displayPoints.toFixed(2)}
+              accent="points"
+              wide
+            />
+          </div>
 
-{/* 🔥 BREAKDOWN */}
-<div className="grid grid-cols-4 gap-2 text-xs">
-  {/* 1X2 */}
-  <div
-  className={`p-3 text-center rounded-2xl border ${
-    correct1x2
-      ? "border-emerald-400/40 bg-emerald-500/15 shadow-[0_0_18px_rgba(16,185,129,0.25)]"
-      : "border-white/8 bg-white/[0.04]"
-  }`}
->
-  <div className="text-[10px] tracking-[0.22em] text-white/45">1X2</div>
-  <div className="mt-1 font-bold text-white">
-  {get1x2Label(predicted1x2)}
-</div>
-  <div className={`mt-1 text-[11px] font-semibold ${correct1x2 ? "text-emerald-300" : "text-white/35"}`}>
-    +{projectedPoints?.onextwoBonus ?? 0}
-  </div>
-</div>
+          <StatBox
+            label="O/U"
+            value={predictedOU}
+            accent={correctOU ? "hit" : wrongOU ? "miss" : "default"}
+          />
 
-  {/* O/U */}
-  <div
-  className={`p-3 text-center rounded-2xl border ${
-    correctOU
-      ? "border-emerald-400/40 bg-emerald-500/15 shadow-[0_0_18px_rgba(16,185,129,0.25)]"
-      : "border-white/8 bg-white/[0.04]"
-  }`}
->
-  <div className="text-[10px] tracking-[0.22em] text-white/45">O/U</div>
-  <div className="mt-1 font-bold text-white">
-    {predictedOU === "Over" ? "Over" : "Under"}
-  </div>
-  <div className={`mt-1 text-[11px] font-semibold ${correctOU ? "text-emerald-300" : "text-white/35"}`}>
-    +{projectedPoints?.ouBonus ?? 0}
-  </div>
-</div>
+          <StatBox
+            label="BTTS"
+            value={predictedBTTS}
+            accent={correctBTTS ? "hit" : wrongBTTS ? "miss" : "default"}
+          />
 
-  {/* BTTS */}
- <div
-  className={`p-3 text-center rounded-2xl border ${
-    correctBTTS
-      ? "border-emerald-400/40 bg-emerald-500/15 shadow-[0_0_18px_rgba(16,185,129,0.25)]"
-      : "border-white/8 bg-white/[0.04]"
-  }`}
->
-  <div className="text-[10px] tracking-[0.22em] text-white/45">BTTS</div>
-  <div className="mt-1 font-bold text-white">
-    {predictedBTTS === "Yes" ? "Yes" : "No"}
-  </div>
-  <div className={`mt-1 text-[11px] font-semibold ${correctBTTS ? "text-emerald-300" : "text-white/35"}`}>
-    +{projectedPoints?.bttsBonus ?? 0}
-  </div>
-</div>
+          <StatBox
+            label="1X2"
+            value={get1x2Label(predicted1x2)}
+            accent={correct1x2 ? "hit" : wrong1x2 ? "miss" : "default"}
+          />
 
-  {/* CORRECT SCORE */}
-  <div
-  className={`p-3 text-center rounded-2xl border ${
-    exactHit
-      ? "border-emerald-400/50 bg-emerald-500/20 shadow-[0_0_22px_rgba(16,185,129,0.35)]"
-      : "border-white/8 bg-white/[0.04]"
-  }`}
->
-  <div className="text-[10px] tracking-[0.22em] text-white/45">CS</div>
- <div className="mt-1 font-bold text-white">
-  {pick.graded ? (exactHit ? "🎯" : "x") : "-"}
-</div>
-  <div className={`mt-1 text-[11px] font-semibold ${exactHit ? "text-emerald-300" : "text-white/35"}`}>
-    +{projectedPoints?.correctScoreBonus ?? 0}
-  </div>
-</div>
-</div>
+          <StatBox
+            label="CS"
+            value={pick.graded ? (exactHit ? "🎯" : "-") : "-"}
+            accent={exactHit ? "hit" : wrongCS ? "miss" : "default"}
+          />
         </div>
       </div>
     </div>
@@ -574,7 +523,7 @@ function WeeklyEntryCard({
                 No predictions saved for this entry.
               </div>
             ) : (
-              <div className="grid gap-4 xl:grid-cols-2">
+              <div className="grid gap-4">
                 {entry.picks.map((pick) => (
                   <PickRowCard key={pick.id} pick={pick} />
                 ))}
