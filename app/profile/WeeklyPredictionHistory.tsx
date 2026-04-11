@@ -360,11 +360,11 @@ const correctBTTS = hasResult && predictedBTTS === actualBTTS;
           />
 
           <BigScoreRow
-            title="Final Score"
-            homeScore={pick.graded ? pick.actual_home_score : null}
-            awayScore={pick.graded ? pick.actual_away_score : null}
-            accent="final"
-          />
+  title="Final Score"
+  homeScore={pick.actual_home_score}
+  awayScore={pick.actual_away_score}
+  accent="final"
+/>
 
           {/* POINTS */}
           {/* 🔥 PROJECTED / FINAL POINTS */}

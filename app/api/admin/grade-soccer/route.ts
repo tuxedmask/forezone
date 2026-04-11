@@ -198,16 +198,14 @@ export async function POST(req: Request) {
         supabase
           .from("soccer_prediction_picks")
           .update({
-            actual_home_score: result.actual_home_score,
-            actual_away_score: result.actual_away_score,
-            btts_points: scored.bttsPoints,
-            ou_points: scored.ouPoints,
-            onextwo_points: scored.oneXTwoPoints,
-            correct_score_points: scored.correctScorePoints,
-            points: scored.totalPoints,
-            graded: true,
-            graded_at: new Date().toISOString(),
-          })
+  actual_home_score: result.actual_home_score,
+  actual_away_score: result.actual_away_score,
+  btts_points: scored.bttsPoints,
+  ou_points: scored.ouPoints,
+  onextwo_points: scored.oneXTwoPoints,
+  correct_score_points: scored.correctScorePoints,
+  points: scored.totalPoints,
+})
           .eq("id", pick.id)
       );
     }
@@ -239,7 +237,7 @@ export async function POST(req: Request) {
         .from("soccer_prediction_entries")
         .update({
           total_points: total,
-          graded: true,
+
         })
         .eq("id", entryId)
     );

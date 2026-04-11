@@ -156,19 +156,17 @@ export async function GET(req: Request) {
 
       userMap[userId].picksCount += 1;
 
-      const isGraded =
-        pick.graded === true ||
-        pick.graded_at !== null;
+   const hasPoints = pick.points !== null;
 
-      if (isGraded) {
-        userMap[userId].totalPoints += Number(pick.points ?? 0);
+      if (pick.points !== null) {
+  userMap[userId].totalPoints += Number(pick.points);
 
-        if ((pick.correct_score_points ?? 0) > 0) {
-          userMap[userId].correctScores += 1;
-        }
-      } else {
-        userMap[userId].pending += 1;
-      }
+  if ((pick.correct_score_points ?? 0) > 0) {
+    userMap[userId].correctScores += 1;
+  }
+} else {
+  userMap[userId].pending += 1;
+}
     }
 
     const leaderboard = Object.values(userMap)

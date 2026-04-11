@@ -341,6 +341,7 @@ export default function AdminSoccerResultsPage() {
   const [resetting, setResetting] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [updatedMatches, setUpdatedMatches] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     async function loadPage() {
@@ -452,17 +453,23 @@ export default function AdminSoccerResultsPage() {
   }, [orderedRows]);
 
   function updateRow(
-    matchId: string,
-    next: { home_score: string; away_score: string }
-  ) {
-    setRows((prev) => ({
-      ...prev,
-      [matchId]: {
-        ...prev[matchId],
-        ...next,
-      },
-    }));
-  }
+  matchId: string,
+  next: { home_score: string; away_score: string }
+) {
+  setRows((prev) => ({
+    ...prev,
+    [matchId]: {
+      ...prev[matchId],
+      ...next,
+    },
+  }));
+
+  setUpdatedMatches((prev) => {
+    const nextSet = new Set(prev);
+    nextSet.add(matchId);
+    return nextSet;
+  });
+}
 
   async function handleSave() {
     try {
@@ -511,12 +518,17 @@ export default function AdminSoccerResultsPage() {
       setMessage("");
 
       const completedRows = orderedRows
-        .filter(({ row }) => row.home_score !== "" && row.away_score !== "")
-        .map(({ row }) => ({
-          match_id: row.match_id,
-          actual_home_score: Number(row.home_score),
-          actual_away_score: Number(row.away_score),
-        }));
+  .filter(
+    ({ row }) =>
+      updatedMatches.has(row.match_id) &&
+      row.home_score !== "" &&
+      row.away_score !== ""
+  )
+  .map(({ row }) => ({
+    match_id: row.match_id,
+    actual_home_score: Number(row.home_score),
+    actual_away_score: Number(row.away_score),
+  }));
 
       if (!matchweekLabel) {
         throw new Error("No active matchweek selected.");
@@ -547,6 +559,8 @@ export default function AdminSoccerResultsPage() {
       setMessage(
         `Grading complete. Updated ${Number(data?.updatedPicks ?? 0)} pick(s).`
       );
+      setUpdatedMatches(new Set());
+      
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to grade matchweek");
     } finally {
@@ -607,6 +621,123 @@ export default function AdminSoccerResultsPage() {
       setResetting(false);
     }
   }
+
+async function handleWeekGraded() {
+  try {
+    if (!matchweekLabel) {
+      throw new Error("No active matchweek selected.");
+    }
+
+    const confirmed = window.confirm(
+      `Mark ${matchweekLabel} as graded?`
+    );
+
+    if (!confirmed) return;
+
+    const res = await fetch("/api/admin/mark-soccer-week-graded", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        leagueSlug: "premier-league",
+        matchweekLabel,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data?.error || "Failed to mark week as graded");
+    }
+
+    alert(`${matchweekLabel} marked as graded.`);
+  } catch (err) {
+    alert("Error marking week as graded");
+  }
+}
+
+  async function handleGradeGames() {
+  try {
+    setGrading(true);
+    setError("");
+    setMessage("");
+
+    if (!matchweekLabel) {
+      throw new Error("No active matchweek selected.");
+    }
+
+    const updatedRows = orderedRows
+      .filter(
+        ({ row }) =>
+          updatedMatches.has(row.match_id) &&
+          row.home_score !== "" &&
+          row.away_score !== ""
+      )
+      .map(({ row }) => ({
+        ...row,
+        home_score: Number(row.home_score),
+        away_score: Number(row.away_score),
+      }));
+
+    if (updatedRows.length === 0) {
+      throw new Error("Update at least one completed game before grading.");
+    }
+
+    const saveRes = await fetch("/api/admin/soccer-results", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        leagueSlug: "premier-league",
+        matchweekLabel,
+        rows: updatedRows,
+      }),
+    });
+
+    const saveData = await saveRes.json();
+
+    if (!saveRes.ok) {
+      throw new Error(saveData?.error || "Failed to save updated games");
+    }
+
+    const gradeRes = await fetch("/api/admin/grade-soccer", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        leagueSlug: "premier-league",
+        matchweekLabel,
+        results: updatedRows.map((row) => ({
+          match_id: row.match_id,
+          actual_home_score: Number(row.home_score),
+          actual_away_score: Number(row.away_score),
+        })),
+      }),
+    });
+
+    const gradeData = await gradeRes.json();
+
+    if (!gradeRes.ok) {
+      throw new Error(gradeData?.error || "Failed to grade updated games");
+    }
+
+    setUpdatedMatches(new Set());
+
+    setMessage(
+      `Saved and graded ${updatedRows.length} game(s). Updated ${Number(
+        gradeData?.updatedPicks ?? 0
+      )} pick(s).`
+    );
+  } catch (err) {
+    setError(err instanceof Error ? err.message : "Failed to grade games");
+  } finally {
+    setGrading(false);
+  }
+}
+
 
   return (
     <main className="min-h-screen bg-[#05070f] px-4 py-10 text-white sm:px-6 lg:px-8">
@@ -671,13 +802,21 @@ export default function AdminSoccerResultsPage() {
             </button>
 
             <button
-              type="button"
-              onClick={handleGrade}
-              disabled={grading || loading || orderedRows.length === 0}
-              className="rounded-[24px] border border-emerald-400/25 bg-emerald-500/15 px-6 py-4 text-sm font-bold uppercase tracking-[0.18em] text-emerald-100 transition hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {grading ? "Grading..." : "Grade Week"}
-            </button>
+  type="button"
+  onClick={handleGradeGames}
+  disabled={grading || loading || updatedMatches.size === 0}
+  className="rounded-[24px] border border-emerald-400/25 bg-emerald-500/15 px-6 py-4 text-sm font-bold uppercase tracking-[0.18em] text-emerald-100 transition hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+>
+  {grading ? "Grading..." : "Grade Games"}
+</button>
+
+<button
+  type="button"
+  onClick={handleWeekGraded}
+  className="rounded-[24px] border border-violet-400/25 bg-violet-500/10 px-6 py-4 text-sm font-bold uppercase tracking-[0.18em] text-violet-100 transition hover:bg-violet-500/15"
+>
+  Week Graded
+</button>
 
             <button
               type="button"
