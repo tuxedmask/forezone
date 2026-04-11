@@ -3,6 +3,10 @@
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
+import {
+  PickRowCard,
+  type WeeklyPredictionPick,
+} from "@/app/profile/WeeklyPredictionHistory";
 
 type RangeType = "weekly" | "all";
 
@@ -23,6 +27,10 @@ type LeaderboardRow = {
   units?: number | null;
   total?: number | null;
 };
+
+type UserExpandedPick = WeeklyPredictionPick;
+
+type UserPicksMap = Record<string, UserExpandedPick[]>;
 
 function getRangeLabel(range: RangeType) {
   return range === "weekly" ? "Weekly" : "All-Time";
@@ -145,7 +153,9 @@ function CorrectScoreBullseyes({ count }: { count: number }) {
 
 export default function LeaderboardPage() {
   const { data: session } = useSession();
-
+const [openUserId, setOpenUserId] = useState<string | null>(null);
+const [loadingUserId, setLoadingUserId] = useState<string | null>(null);
+const [userPicksMap, setUserPicksMap] = useState<UserPicksMap>({});
   const [rows, setRows] = useState<LeaderboardRow[]>([]);
   const [initialLoading, setInitialLoading] = useState(true);
   const [range, setRange] = useState<RangeType>("weekly");
@@ -169,6 +179,70 @@ export default function LeaderboardPage() {
 
     return Array.isArray(data) ? data : data?.leaderboard || [];
   }
+
+async function toggleUserPicks(row: LeaderboardRow) {
+  const userId = row.userId || null;
+  if (!userId) {
+    console.log("No userId on row:", row);
+    return;
+  }
+
+  if (openUserId === userId) {
+    setOpenUserId(null);
+    return;
+  }
+
+  setOpenUserId(userId);
+
+
+  try {
+    setLoadingUserId(userId);
+
+    const weekValue = selectedMatchweek ?? currentMatchweek ?? "";
+    const url = `/api/soccer/leaderboard-user-picks?leagueSlug=premier-league&userId=${encodeURIComponent(
+      userId
+    )}&matchweek=${encodeURIComponent(String(weekValue))}`;
+
+    console.log("Fetching leaderboard picks:", {
+      row,
+      userId,
+      weekValue,
+      url,
+    });
+
+    const res = await fetch(url, { cache: "no-store" });
+
+const raw = await res.text();
+console.log("Leaderboard picks raw response:", raw);
+
+let data: any = {};
+try {
+  data = raw ? JSON.parse(raw) : {};
+} catch {
+  data = { raw };
+}
+
+console.log("Leaderboard picks response:", data);
+
+if (!res.ok) {
+throw new Error(data?.details || data?.error || `Request failed: ${res.status}`);}
+
+    const picks = Array.isArray(data?.picks) ? data.picks : [];
+
+    setUserPicksMap((prev) => ({
+      ...prev,
+      [userId]: picks,
+    }));
+  } catch (error) {
+    console.error("Failed to load user picks:", error);
+    setUserPicksMap((prev) => ({
+      ...prev,
+      [userId]: [],
+    }));
+  } finally {
+    setLoadingUserId(null);
+  }
+}
 
   useEffect(() => {
     let active = true;
@@ -511,7 +585,12 @@ export default function LeaderboardPage() {
 
                         <div>
                           <div className="flex items-center gap-2">
+  <div>
   <div className="font-bold">{getSafeName(p)}</div>
+  <div className="text-[10px] text-white/35">
+    ID: {p.userId || "missing"}
+  </div>
+</div>
   <CorrectScoreBullseyes count={Number(p.correctScores ?? 0)} />
 </div>
                           
@@ -597,61 +676,98 @@ export default function LeaderboardPage() {
                 Full Leaderboard
               </div>
 
-              {remainingRows.map((p, i) => (
-  <div
-    key={p.userId || `row-${i}`}
-    className={`rounded-2xl border p-4 transition ${
-      isCurrentUserRow(p, session)
-        ? "border-emerald-400/35 bg-emerald-500/10 shadow-[0_0_20px_rgba(16,185,129,0.14)]"
-        : "border-white/10 bg-white/5"
-    }`}
-  >
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 font-bold">
-                        {p.rank ? `#${p.rank}` : getRankIcon(i)}
-                      </div>
+             {remainingRows.map((p, i) => {
+  const rowUserId = p.userId || `row-${i}`;
+  const isOpen = openUserId === p.userId;
+  const expandedPicks = p.userId ? userPicksMap[p.userId] || [] : [];
 
-                      {p.userImage ? (
-                        <Image
-                          src={p.userImage}
-                          alt={getSafeName(p)}
-                          width={45}
-                          height={45}
-                          className="rounded-xl object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-500/20">
-                          {getInitials(p.userName)}
-                        </div>
-                      )}
+  return (
+    <div
+      key={rowUserId}
+      className={`rounded-2xl border p-4 transition ${
+        isCurrentUserRow(p, session)
+          ? "border-emerald-400/35 bg-emerald-500/10 shadow-[0_0_20px_rgba(16,185,129,0.14)]"
+          : "border-white/10 bg-white/5"
+      }`}
+    >
+      <button
+        type="button"
+        onClick={() => toggleUserPicks(p)}
+        className="w-full text-left"
+      >
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-10 font-bold">
+              {p.rank ? `#${p.rank}` : getRankIcon(i)}
+            </div>
 
-                      <div>
-  <div className="flex items-center gap-2">
-    <div className="flex items-center gap-2">
-  <div className="font-bold">{getSafeName(p)}</div>
-  <CorrectScoreBullseyes count={Number(p.correctScores ?? 0)} />
-</div>
+            {p.userImage ? (
+              <Image
+                src={p.userImage}
+                alt={getSafeName(p)}
+                width={45}
+                height={45}
+                className="rounded-xl object-cover"
+              />
+            ) : (
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-500/20">
+                {getInitials(p.userName)}
+              </div>
+            )}
 
-    {isCurrentUserRow(p, session) && (
-      <span className="rounded-full border border-emerald-300/20 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-200">
-        You
-      </span>
-    )}
-  </div>
-
-  
-</div>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-3 lg:mt-0">
-  <Stat label="Pts" value={getPointsValue(p).toFixed(2)} />
-  <Stat label="Correct" value={p.correctScores ?? 0} />
-  <Stat label="Picks" value={`${p.pending ?? 0} / ${p.picksCount ?? 0}`} />
-</div>
-                  </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2">
+                  <div className="font-bold">{getSafeName(p)}</div>
+                  <CorrectScoreBullseyes count={Number(p.correctScores ?? 0)} />
                 </div>
+
+                {isCurrentUserRow(p, session) && (
+                  <span className="rounded-full border border-emerald-300/20 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-200">
+                    You
+                  </span>
+                )}
+
+                <span className="ml-2 text-xs text-white/45">
+                  {isOpen ? "▲ Hide games" : "▼ Show games"}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3 lg:mt-0">
+            <Stat label="Pts" value={getPointsValue(p).toFixed(2)} />
+            <Stat label="Correct" value={p.correctScores ?? 0} />
+            <Stat label="Picks" value={`${p.pending ?? 0} / ${p.picksCount ?? 0}`} />
+          </div>
+        </div>
+      </button>
+
+      {isOpen ? (
+        <div className="mt-4 border-t border-white/10 pt-4">
+          {loadingUserId === p.userId ? (
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white/60">
+              Loading graded picks...
+            </div>
+          ) : expandedPicks.length > 0 ? (
+            <div className="grid gap-4">
+              {expandedPicks.map((pick) => (
+                <PickRowCard key={pick.id} pick={pick} />
               ))}
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white/60">
+  No graded picks returned.
+  <div className="mt-2 text-[11px] text-white/40">
+    User ID: {p.userId || "missing"} • Week: {selectedMatchweek ?? currentMatchweek ?? "none"}
+  </div>
+</div>
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
+})}
 
               {!rows.length && (
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-8 text-center text-white/50">

@@ -96,16 +96,14 @@ function getTeamShortName(name: string | null) {
     .toUpperCase();
 }
 
-function PickRowCard({ pick }: { pick: WeeklyPredictionPick }) {
-  const exactHit =
-    Boolean(pick.graded) &&
-    pick.predicted_home_score === pick.actual_home_score &&
-    pick.predicted_away_score === pick.actual_away_score;
-
+export function PickRowCard({ pick }: { pick: WeeklyPredictionPick }) {
   const hasResult =
     typeof pick.actual_home_score === "number" &&
     typeof pick.actual_away_score === "number";
-
+ const exactHit =
+  hasResult &&
+  pick.predicted_home_score === pick.actual_home_score &&
+  pick.predicted_away_score === pick.actual_away_score;
   function formatKickoff(value: string | null) {
     if (!value) return "Kickoff TBD";
 
@@ -191,15 +189,19 @@ function PickRowCard({ pick }: { pick: WeeklyPredictionPick }) {
   const wrong1x2 = hasResult && !correct1x2;
   const wrongOU = hasResult && !correctOU;
   const wrongBTTS = hasResult && !correctBTTS;
-  const wrongCS = Boolean(pick.graded) && !exactHit;
+  const wrongCS = hasResult && !exactHit;
 
   const homeLogo = pick.home_logo || getTeamLogo(pick.home_team);
   const awayLogo = pick.away_logo || getTeamLogo(pick.away_team);
 
   const badgeItems: { key: string; label: string; icon: string }[] = [];
-
+const coreHits = [
+  correctOU,
+  correctBTTS,
+  correct1x2,
+].filter(Boolean).length;
   if (exactHit) {
-    badgeItems.push({ key: "cs", label: "Bullseye", icon: "🎯" });
+    badgeItems.push({ key: "cs", label: "Perfect", icon: "🎯" });
   }
 
   if (correctOU) {
@@ -226,6 +228,27 @@ function PickRowCard({ pick }: { pick: WeeklyPredictionPick }) {
     label: predictedBTTS === "Yes" ? "BTTS" : "BTTS",
     icon: predictedBTTS === "Yes" ? "✅⚽" : "🚫⚽",
   });
+}
+
+
+function getCardGlow() {
+  if (exactHit) {
+  return "border-amber-300/80 shadow-[0_0_0_1px_rgba(255,210,80,0.45),0_0_16px_rgba(255,180,40,0.35),0_0_36px_rgba(255,140,0,0.28),0_0_60px_rgba(255,110,0,0.18)]";
+}
+
+  if (coreHits === 3) {
+    return "border-emerald-300/70 shadow-[0_0_0_1px_rgba(110,231,183,0.22),0_0_24px_rgba(52,211,153,0.28),0_0_55px_rgba(16,185,129,0.18)]";
+  }
+
+  if (coreHits === 2) {
+    return "border-emerald-400/55 shadow-[0_0_0_1px_rgba(74,222,128,0.16),0_0_18px_rgba(74,222,128,0.18),0_0_38px_rgba(34,197,94,0.12)]";
+  }
+
+  if (coreHits === 1) {
+    return "border-yellow-300/45 shadow-[0_0_0_1px_rgba(253,224,71,0.14),0_0_16px_rgba(250,204,21,0.16),0_0_34px_rgba(250,204,21,0.10)]";
+  }
+
+  return "border-[#31294c] shadow-[0_0_24px_rgba(0,0,0,0.14)] hover:border-indigo-300/30 hover:shadow-[0_0_35px_rgba(99,102,241,0.18)]";
 }
 
   function StatBox({
@@ -274,14 +297,37 @@ function PickRowCard({ pick }: { pick: WeeklyPredictionPick }) {
   }
 
   return (
-<div className="group relative rounded-[26px] border border-[#31294c] bg-[linear-gradient(180deg,#171226,#0f0b19)] p-4 shadow-[0_0_24px_rgba(0,0,0,0.14)] transition-all duration-300 hover:border-indigo-300/30 hover:shadow-[0_0_35px_rgba(99,102,241,0.18)]">       
+<div
+  className={`group relative isolate overflow-visible rounded-[26px] border bg-[linear-gradient(180deg,#171226,#0f0b19)] p-4 transition-all duration-300 ${getCardGlow()}`}
+>
+ {exactHit ? (
+  <>
+    
+
+   
+
+    {/* HOT INNER GLOW */}
+    <div
+      className="pointer-events-none absolute inset-[-3px] z-0 rounded-[30px] shadow-[0_0_55px_rgba(255,170,20,0.75),0_0_120px_rgba(255,80,0,0.55)]"
+      style={{ animation: "emberPulse 1.1s ease-in-out infinite" }}
+    />
+
+    
+  </>
+) : null}
+
+
        {badgeItems.length > 0 ? (
   <div className="absolute left-4 -top-3 z-20 flex flex-wrap gap-2">
     {badgeItems.map((badge) => (
       <div
-        key={badge.key}
-        className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/40 bg-[#0f0b19] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.18)]"
-      >
+  key={badge.key}
+  className={`inline-flex items-center gap-1.5 rounded-full bg-[#0f0b19] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] ${
+    badge.key === "cs"
+  ? "border border-amber-300/80 text-amber-100 shadow-[0_0_20px_rgba(255,200,0,0.45),0_0_35px_rgba(255,140,0,0.35)]"
+      : "border border-emerald-400/40 text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.18)]"
+  }`}
+>
         <span className="text-xs">{badge.icon}</span>
         <span>{badge.label}</span>
       </div>
@@ -289,9 +335,8 @@ function PickRowCard({ pick }: { pick: WeeklyPredictionPick }) {
   </div>
 ) : null}
 
-      <div className="flex items-start justify-between gap-3">
-        {/* LEFT */}
-        <div className="min-w-0 flex-[1.05] pr-3">
+<div className="relative z-10 flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">        {/* LEFT */}
+        <div className="min-w-0 xl:flex-[1.05] xl:pr-3">
           <div className="mb-3 text-center text-[10px] font-semibold uppercase tracking-[0.22em] text-[#9f96c7]">
             {formatKickoff(pick.kickoff_time ?? null)}
           </div>
@@ -351,7 +396,7 @@ function PickRowCard({ pick }: { pick: WeeklyPredictionPick }) {
           </div>
         </div>
 
-        <div className="grid shrink-0 grid-cols-4 gap-2.5">
+        <div className="grid grid-cols-2 gap-2.5 xl:shrink-0 xl:grid-cols-4">
           <StatBox
             label="Pred"
             value={`${pick.predicted_home_score ?? "-"} - ${pick.predicted_away_score ?? "-"}`}
@@ -394,10 +439,10 @@ function PickRowCard({ pick }: { pick: WeeklyPredictionPick }) {
           />
 
           <StatBox
-            label="CS"
-            value={pick.graded ? (exactHit ? "🎯" : "-") : "-"}
-            accent={exactHit ? "hit" : wrongCS ? "miss" : "default"}
-          />
+  label="CS"
+  value={hasResult ? (exactHit ? "🎯" : "-") : "-"}
+  accent={exactHit ? "hit" : wrongCS ? "miss" : "default"}
+/>
         </div>
       </div>
     </div>
@@ -523,7 +568,7 @@ function WeeklyEntryCard({
                 No predictions saved for this entry.
               </div>
             ) : (
-              <div className="grid gap-4">
+              <div className="grid gap-6">
                 {entry.picks.map((pick) => (
                   <PickRowCard key={pick.id} pick={pick} />
                 ))}
@@ -533,6 +578,106 @@ function WeeklyEntryCard({
         </div>
       </div>
     </div>
+  );
+}
+
+function FlameStyles() {
+  return (
+    <style jsx global>{`
+      @keyframes flameFlickerOuter {
+        0%, 100% {
+          transform: scale(1) rotate(0deg);
+          opacity: 0.78;
+          filter: blur(22px);
+        }
+        20% {
+          transform: scale(1.03) rotate(-0.7deg);
+          opacity: 0.95;
+          filter: blur(26px);
+        }
+        50% {
+          transform: scale(1.08) rotate(0.8deg);
+          opacity: 1;
+          filter: blur(30px);
+        }
+        75% {
+          transform: scale(1.04) rotate(-0.5deg);
+          opacity: 0.88;
+          filter: blur(24px);
+        }
+      }
+
+      @keyframes flameFlickerInner {
+        0%, 100% {
+          transform: scale(1);
+          opacity: 0.72;
+          filter: blur(6px);
+        }
+        35% {
+          transform: scale(1.025);
+          opacity: 0.95;
+          filter: blur(9px);
+        }
+        65% {
+          transform: scale(1.04);
+          opacity: 1;
+          filter: blur(11px);
+        }
+      }
+
+      @keyframes emberPulse {
+        0%, 100% {
+          opacity: 0.75;
+          transform: scale(1);
+        }
+        50% {
+          opacity: 1;
+          transform: scale(1.02);
+        }
+      }
+
+      @keyframes emberDrift1 {
+        0% {
+          transform: translateY(0px) translateX(0px) scale(0.9);
+          opacity: 0;
+        }
+        20% {
+          opacity: 1;
+        }
+        100% {
+          transform: translateY(-26px) translateX(10px) scale(1.15);
+          opacity: 0;
+        }
+      }
+
+      @keyframes emberDrift2 {
+        0% {
+          transform: translateY(0px) translateX(0px) scale(0.85);
+          opacity: 0;
+        }
+        25% {
+          opacity: 1;
+        }
+        100% {
+          transform: translateY(-22px) translateX(-8px) scale(1.1);
+          opacity: 0;
+        }
+      }
+
+      @keyframes emberDrift3 {
+        0% {
+          transform: translateY(0px) translateX(0px) scale(0.8);
+          opacity: 0;
+        }
+        20% {
+          opacity: 1;
+        }
+        100% {
+          transform: translateY(-30px) translateX(6px) scale(1.2);
+          opacity: 0;
+        }
+      }
+    `}</style>
   );
 }
 
@@ -555,6 +700,8 @@ export default function WeeklyPredictionHistory({
         }, 0);
 
   return (
+  <>
+    <FlameStyles />
     <div className="rounded-2xl border border-[#31294c] bg-[linear-gradient(180deg,#131021,#0b0914)] p-6 shadow-[0_0_30px_rgba(0,0,0,0.16)]">
       <div className="mb-6 flex items-center justify-between">
         <div>
@@ -583,5 +730,6 @@ export default function WeeklyPredictionHistory({
         </div>
       )}
     </div>
+    </>
   );
 }

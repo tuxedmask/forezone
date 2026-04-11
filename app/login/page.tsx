@@ -280,7 +280,18 @@ export default function LoginPage() {
 
               <button
                 type="button"
-                onClick={() => signIn("twitch", { callbackUrl: "/" })}
+                onClick={async () => {
+  const result = await signIn("twitch", {
+    callbackUrl: "https://forezone.vercel.app/",
+    redirect: false,
+  });
+
+  console.log("TWITCH SIGNIN RESULT:", result);
+
+  if (result?.url) {
+    window.location.href = result.url;
+  }
+}}
                 style={{
                   width: "100%",
                   padding: "15px 18px",
