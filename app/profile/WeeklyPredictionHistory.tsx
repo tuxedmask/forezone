@@ -272,9 +272,10 @@ const projectedPoints =
       })
     : null;
 
-const displayPoints = pick.graded
-  ? Number(pick.points || 0)
-  : Number(projectedPoints?.total || 0);
+const displayPoints =
+  pick.points !== null && pick.points !== undefined
+    ? Number(pick.points)
+    : Number(projectedPoints?.total || 0);
 
 const actual1x2 = hasResult
   ? get1x2(pick.actual_home_score!, pick.actual_away_score!)
@@ -370,7 +371,7 @@ const correctBTTS = hasResult && predictedBTTS === actualBTTS;
           {/* 🔥 PROJECTED / FINAL POINTS */}
 <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-center">
   <span className="text-sm text-emerald-200/80">
-    {pick.graded ? "Points:" : "Projected:"}
+   {pick.points !== null && pick.points !== undefined ? "Points:" : "Projected:"}
   </span>{" "}
   <span className="text-2xl font-extrabold text-white">
     {displayPoints.toFixed(2)}

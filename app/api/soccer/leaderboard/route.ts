@@ -17,6 +17,8 @@ type PickRow = {
   correct_score_points: number | null;
   graded: boolean | null;
   graded_at: string | null;
+  actual_home_score: number | null;
+  actual_away_score: number | null;
 };
 
 export async function GET(req: Request) {
@@ -74,7 +76,7 @@ export async function GET(req: Request) {
 
     const { data: picksData, error: picksError } = await supabase
       .from("soccer_prediction_picks")
-      .select("entry_id, correct_score_points, points, graded, graded_at")
+      .select("entry_id, correct_score_points, points, graded, graded_at, actual_home_score, actual_away_score")
       .in("entry_id", entryIds);
 
     if (picksError) {
@@ -158,13 +160,21 @@ export async function GET(req: Request) {
 
    const hasPoints = pick.points !== null;
 
-      if (pick.points !== null) {
+     const hasActualResult =
+  pick.actual_home_score !== null &&
+  pick.actual_away_score !== null;
+
+// add points if they exist
+if (pick.points !== null) {
   userMap[userId].totalPoints += Number(pick.points);
 
   if ((pick.correct_score_points ?? 0) > 0) {
     userMap[userId].correctScores += 1;
   }
-} else {
+}
+
+// count pending based on NO result
+if (!hasActualResult) {
   userMap[userId].pending += 1;
 }
     }

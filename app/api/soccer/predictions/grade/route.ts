@@ -46,8 +46,8 @@ function calculatePickPoints(pick: {
   if (predictedBTTS === actualBTTS) {
     bttsPoints =
       actualBTTS === "Yes"
-        ? 0.5 * Number(pick.btts_yes_odds || 0)
-        : 0.5 * Number(pick.btts_no_odds || 0);
+        ? 5 * Number(pick.btts_yes_odds || 0)
+        : 5 * Number(pick.btts_no_odds || 0);
   }
 
   const predictedOU = predictedHome + predictedAway > 2.5 ? "Over" : "Under";
@@ -56,8 +56,8 @@ function calculatePickPoints(pick: {
   if (predictedOU === actualOU) {
     ouPoints =
       actualOU === "Over"
-        ? 0.5 * Number(pick.over_2_5_odds || 0)
-        : 0.5 * Number(pick.under_2_5_odds || 0);
+        ? 5 * Number(pick.over_2_5_odds || 0) 
+        : 5 * Number(pick.under_2_5_odds || 0) ;
   }
 
   const predicted1X2 = getResult(predictedHome, predictedAway);
@@ -65,11 +65,11 @@ function calculatePickPoints(pick: {
 
   if (predicted1X2 === actual1X2) {
     if (actual1X2 === "1") {
-      oneXTwoPoints = 0.2 * Number(pick.home_win_odds || 0);
+      oneXTwoPoints = 2 * Number(pick.home_win_odds || 0);
     } else if (actual1X2 === "X") {
-      oneXTwoPoints = 0.5 * Number(pick.draw_odds || 0);
+      oneXTwoPoints = 5 * Number(pick.draw_odds || 0);
     } else {
-      oneXTwoPoints = 0.3 * Number(pick.away_win_odds || 0);
+      oneXTwoPoints = 3 * Number(pick.away_win_odds || 0);
     }
   }
 

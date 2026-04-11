@@ -118,6 +118,31 @@ function buildWeekOptions(startWeek = 32, totalWeeks = 38) {
   );
 }
 
+function CorrectScoreBullseyes({ count }: { count: number }) {
+  if (!count) return null;
+
+  const visible = Math.min(count, 5);
+  const extra = count - visible;
+
+  return (
+    <div className="flex items-center gap-1">
+      {Array.from({ length: visible }).map((_, i) => (
+        <span
+  key={i}
+  className="text-3xl leading-none text-white drop-shadow-[0_0_8px_rgba(255,255,255,1)]"
+>
+  🎯
+</span>
+      ))}
+      {extra > 0 ? (
+        <span className="ml-1 text-xs font-bold text-white/80 drop-shadow-[0_0_6px_rgba(255,255,255,0.8)]">
+          +{extra}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
 export default function LeaderboardPage() {
   const { data: session } = useSession();
 
@@ -429,14 +454,30 @@ export default function LeaderboardPage() {
                   {top3.map((p, i) => (
                     <div
                       key={p.userId || `top-${i}`}
-                      className={`rounded-3xl border bg-gradient-to-br p-5 ${getGlow(i)} ${
-                        isCurrentUserRow(p, session)
-                          ? "ring-2 ring-emerald-400/60 shadow-[0_0_24px_rgba(16,185,129,0.2)]"
-                          : ""
-                      }`}
+                      className={`rounded-3xl border bg-gradient-to-br p-5 transition hover:scale-[1.02] ${
+  i === 0
+    ? "border-yellow-400/50 from-yellow-500/20 shadow-[0_0_30px_rgba(250,204,21,0.28)]"
+    : i === 1
+    ? "border-slate-300/40 from-slate-300/15 shadow-[0_0_28px_rgba(226,232,240,0.22)]"
+    : "border-orange-400/40 from-orange-400/20 shadow-[0_0_28px_rgba(251,146,60,0.24)]"
+} ${
+  isCurrentUserRow(p, session)
+    ? "ring-2 ring-emerald-400/60 shadow-[0_0_24px_rgba(16,185,129,0.2)]"
+    : ""
+}`}
                     >
                       <div className="flex items-start justify-between gap-3">
-                        <div className="text-lg font-black">{getRankIcon(i)}</div>
+                        <div
+  className={`text-4xl leading-none drop-shadow-[0_0_10px_rgba(255,255,255,0.35)] ${
+    i === 0
+      ? "drop-shadow-[0_0_14px_rgba(250,204,21,0.9)]"
+      : i === 1
+      ? "drop-shadow-[0_0_14px_rgba(226,232,240,0.9)]"
+      : "drop-shadow-[0_0_14px_rgba(251,146,60,0.9)]"
+  }`}
+>
+  {getRankIcon(i)}
+</div>
 
                         <div className="flex flex-col items-end gap-2">
                           {getTopPercent(i, rows.length) && (
@@ -469,19 +510,22 @@ export default function LeaderboardPage() {
                         )}
 
                         <div>
-                          <div className="font-bold">{getSafeName(p)}</div>
-                          <div className="text-sm text-white/50">
-                            {getRecordValue(p)}
-                          </div>
+                          <div className="flex items-center gap-2">
+  <div className="font-bold">{getSafeName(p)}</div>
+  <CorrectScoreBullseyes count={Number(p.correctScores ?? 0)} />
+</div>
+                          
                         </div>
                       </div>
 
-                      <div className="mt-5 grid grid-cols-2 gap-3">
-                        <Stat label="Points" value={getPointsValue(p).toFixed(2)} />
-                        <Stat label="Win %" value={`${getWinPctValue(p)}%`} />
-                        <Stat label="Correct" value={p.correctScores ?? 0} />
-                        <Stat label="Pending" value={p.pending ?? 0} />
-                      </div>
+                      <div className="mt-5 grid grid-cols-3 gap-3">
+  <Stat label="Pts" value={getPointsValue(p).toFixed(2)} />
+  <Stat label="Correct" value={p.correctScores ?? 0} />
+  <Stat
+    label="Picks"
+    value={`${p.pending ?? 0} / ${p.picksCount ?? 0}`}
+  />
+</div>
                     </div>
                   ))}
                 </div>
@@ -522,26 +566,26 @@ export default function LeaderboardPage() {
 
                         <div>
                           <div className="flex items-center gap-2">
-                            <div className="font-bold">
-                              {getSafeName(currentUserRow)}
-                            </div>
+                            <div className="flex items-center gap-2">
+  <div className="font-bold">{getSafeName(currentUserRow)}</div>
+  <CorrectScoreBullseyes count={Number(currentUserRow.correctScores ?? 0)} />
+</div>
                             <span className="rounded-full border border-emerald-300/20 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-200">
                               You
                             </span>
                           </div>
-                          <div className="text-xs text-white/50">
-                            Record: {getRecordValue(currentUserRow)}
-                          </div>
+                          
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5 lg:mt-0">
-                        <Stat label="Pts" value={getPointsValue(currentUserRow).toFixed(2)} />
-                        <Stat label="Win%" value={`${getWinPctValue(currentUserRow)}%`} />
-                        <Stat label="Correct" value={currentUserRow.correctScores ?? 0} />
-                        <Stat label="Pending" value={currentUserRow.pending ?? 0} />
-                        <Stat label="Picks" value={currentUserRow.picksCount ?? 0} />
-                      </div>
+                      <div className="grid grid-cols-3 gap-3 lg:mt-0">
+  <Stat label="Pts" value={Number(currentUserRow.totalPoints ?? 0).toFixed(2)} />
+  <Stat label="Correct" value={currentUserRow.correctScores ?? 0} />
+  <Stat
+    label="Picks"
+    value={`${currentUserRow.pending ?? 0} / ${currentUserRow.picksCount ?? 0}`}
+  />
+</div>
                     </div>
                   </div>
 
@@ -584,7 +628,10 @@ export default function LeaderboardPage() {
 
                       <div>
   <div className="flex items-center gap-2">
-    <div className="font-bold">{getSafeName(p)}</div>
+    <div className="flex items-center gap-2">
+  <div className="font-bold">{getSafeName(p)}</div>
+  <CorrectScoreBullseyes count={Number(p.correctScores ?? 0)} />
+</div>
 
     {isCurrentUserRow(p, session) && (
       <span className="rounded-full border border-emerald-300/20 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-200">
@@ -593,19 +640,15 @@ export default function LeaderboardPage() {
     )}
   </div>
 
-  <div className="text-xs text-white/50">
-    Record: {getRecordValue(p)}
-  </div>
+  
 </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-5 lg:mt-0">
-                      <Stat label="Pts" value={getPointsValue(p).toFixed(2)} />
-                      <Stat label="Win%" value={`${getWinPctValue(p)}%`} />
-                      <Stat label="Correct" value={p.correctScores ?? 0} />
-                      <Stat label="Pending" value={p.pending ?? 0} />
-                      <Stat label="Picks" value={p.picksCount ?? 0} />
-                    </div>
+                    <div className="grid grid-cols-3 gap-3 lg:mt-0">
+  <Stat label="Pts" value={getPointsValue(p).toFixed(2)} />
+  <Stat label="Correct" value={p.correctScores ?? 0} />
+  <Stat label="Picks" value={`${p.pending ?? 0} / ${p.picksCount ?? 0}`} />
+</div>
                   </div>
                 </div>
               ))}
@@ -624,10 +667,33 @@ export default function LeaderboardPage() {
 }
 
 function Stat({ label, value }: { label: string; value: any }) {
+  const isPts = label.toLowerCase().includes("pt");
+
   return (
-    <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-center">
-      <div className="text-[10px] uppercase text-white/40">{label}</div>
-      <div className="font-bold">{value}</div>
+    <div
+      className={`rounded-xl px-3 py-2 text-center border ${
+        isPts
+          ? "border-blue-400/40 bg-blue-500/10 shadow-[0_0_18px_rgba(59,130,246,0.35)]"
+          : "border-white/10 bg-white/5"
+      }`}
+    >
+      <div
+        className={`text-[10px] uppercase ${
+          isPts ? "text-blue-300" : "text-white/40"
+        }`}
+      >
+        {label}
+      </div>
+
+      <div
+        className={`font-bold ${
+          isPts
+            ? "text-blue-400 text-lg drop-shadow-[0_0_8px_rgba(59,130,246,0.9)]"
+            : "text-white"
+        }`}
+      >
+        {value}
+      </div>
     </div>
   );
 }

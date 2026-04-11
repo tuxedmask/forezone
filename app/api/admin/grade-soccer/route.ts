@@ -89,7 +89,7 @@ function calculatePickPoints(pick: {
   oneXTwoPoints = round2(oneXTwoPoints);
   correctScorePoints = round2(correctScorePoints);
 
-  const totalPoints = round2(
+  const totalPoints = 10* round2(
     bttsPoints + ouPoints + oneXTwoPoints + correctScorePoints
   );
 
