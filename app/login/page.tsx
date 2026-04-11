@@ -4,13 +4,18 @@ import Image from "next/image";
 import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { useSearchParams } from "next/navigation";
 
-export default function LoginPage() {
+export default function LoginPage({
+  searchParams,
+}: {
+  searchParams?: { [key: string]: string | string[] | undefined };
+}) {
   const { data: session, status } = useSession();
   const router = useRouter();
-const searchParams = useSearchParams();
-const authError = searchParams.get("error");
+
+  const authError =
+    typeof searchParams?.error === "string" ? searchParams.error : null;
+
   useEffect(() => {
     if (status === "authenticated") {
       router.push("/");
@@ -155,8 +160,8 @@ const authError = searchParams.get("error");
                 position: "relative",
               }}
             >
-              Log in with Discord or Twitch to submit your NBA pick of the day,
-              track the NoLs board, and climb the leaderboard.
+              Log in with Discord, Twitch, or Google to submit your NBA pick of
+              the day, track the NoLs board, and climb the leaderboard.
             </p>
 
             <div
@@ -258,22 +263,26 @@ const authError = searchParams.get("error");
                 Use the account you want tied to your Fore Zone profile.
               </p>
             </div>
-{authError === "twitch" ? (
-  <div
-    style={{
-      marginBottom: 16,
-      padding: "14px 16px",
-      borderRadius: 16,
-      border: "1px solid rgba(239,68,68,0.28)",
-      background: "rgba(127,29,29,0.18)",
-      color: "#fecaca",
-      fontSize: 14,
-      lineHeight: 1.6,
-    }}
-  >
-    Twitch sign-in was blocked or interrupted by your browser. Try again, or open Fore Zone in an incognito/private window and sign in with Twitch there.
-  </div>
-) : null}
+
+            {authError === "twitch" ? (
+              <div
+                style={{
+                  marginBottom: 16,
+                  padding: "14px 16px",
+                  borderRadius: 16,
+                  border: "1px solid rgba(239,68,68,0.28)",
+                  background: "rgba(127,29,29,0.18)",
+                  color: "#fecaca",
+                  fontSize: 14,
+                  lineHeight: 1.6,
+                }}
+              >
+                Twitch sign-in was blocked or interrupted by your browser. Try
+                again, or open Fore Zone in an incognito/private window and sign
+                in with Twitch there.
+              </div>
+            ) : null}
+
             <div style={{ display: "grid", gap: 14 }}>
               <button
                 type="button"
@@ -295,49 +304,46 @@ const authError = searchParams.get("error");
                 Continue with Discord
               </button>
 
-             <a
-  href="/api/auth/signin/twitch?callbackUrl=https%3A%2F%2Fforezone.vercel.app%2F"
-  style={{
-    display: "block",
-    width: "100%",
-    padding: "15px 18px",
-    borderRadius: 16,
-    border: "1px solid rgba(168,85,247,0.28)",
-    background:
-      "linear-gradient(180deg, rgba(168,85,247,0.20), rgba(168,85,247,0.10))",
-    color: "white",
-    fontWeight: 800,
-    fontSize: 15,
-    textDecoration: "none",
-    textAlign: "center",
-    boxShadow: "0 0 18px rgba(168,85,247,0.14)",
-  }}
->
-  Continue with Twitch
-</a>
-<button
-  type="button"
-  onClick={() => {
-  window.location.href =
-    "/api/auth/signin/twitch?callbackUrl=https%3A%2F%2Fforezone.vercel.app%2F";
-}}
-  style={{
-    width: "100%",
-    padding: "15px 18px",
-    borderRadius: 16,
-    border: "1px solid rgba(34,197,94,0.28)",
-    background:
-      "linear-gradient(180deg, rgba(34,197,94,0.20), rgba(34,197,94,0.10))",
-    color: "white",
-    fontWeight: 800,
-    fontSize: 15,
-    cursor: "pointer",
-    boxShadow: "0 0 18px rgba(34,197,94,0.14)",
-  }}
->
-  Continue with Google
-</button>
+              <a
+                href="/api/auth/signin/twitch?callbackUrl=https%3A%2F%2Fforezone.vercel.app%2F"
+                style={{
+                  display: "block",
+                  width: "100%",
+                  padding: "15px 18px",
+                  borderRadius: 16,
+                  border: "1px solid rgba(168,85,247,0.28)",
+                  background:
+                    "linear-gradient(180deg, rgba(168,85,247,0.20), rgba(168,85,247,0.10))",
+                  color: "white",
+                  fontWeight: 800,
+                  fontSize: 15,
+                  textDecoration: "none",
+                  textAlign: "center",
+                  boxShadow: "0 0 18px rgba(168,85,247,0.14)",
+                }}
+              >
+                Continue with Twitch
+              </a>
 
+              <button
+                type="button"
+                onClick={() => signIn("google", { callbackUrl: "/" })}
+                style={{
+                  width: "100%",
+                  padding: "15px 18px",
+                  borderRadius: 16,
+                  border: "1px solid rgba(34,197,94,0.28)",
+                  background:
+                    "linear-gradient(180deg, rgba(34,197,94,0.20), rgba(34,197,94,0.10))",
+                  color: "white",
+                  fontWeight: 800,
+                  fontSize: 15,
+                  cursor: "pointer",
+                  boxShadow: "0 0 18px rgba(34,197,94,0.14)",
+                }}
+              >
+                Continue with Google
+              </button>
             </div>
 
             <div
