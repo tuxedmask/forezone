@@ -4,13 +4,18 @@ import Image from "next/image";
 import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { useSearchParams } from "next/navigation";
 
-export default function LoginPage() {
+export default function LoginPage({
+  searchParams,
+}: {
+  searchParams?: { [key: string]: string | string[] | undefined };
+}) {
   const { data: session, status } = useSession();
   const router = useRouter();
-const searchParams = useSearchParams();
-const authError = searchParams.get("error");
+
+  const authError =
+    typeof searchParams?.error === "string" ? searchParams.error : null;
+
   useEffect(() => {
     if (status === "authenticated") {
       router.push("/");
@@ -28,7 +33,6 @@ const authError = searchParams.get("error");
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          fontFamily: "Arial, sans-serif",
         }}
       >
         Loading...
@@ -36,9 +40,7 @@ const authError = searchParams.get("error");
     );
   }
 
-  if (session) {
-    return null;
-  }
+  if (session) return null;
 
   return (
     <main
@@ -47,7 +49,6 @@ const authError = searchParams.get("error");
         background:
           "radial-gradient(circle at top, #1a1333 0%, #0d0a19 45%, #05030b 100%)",
         color: "white",
-        fontFamily: "Arial, sans-serif",
       }}
     >
       <section
@@ -62,82 +63,18 @@ const authError = searchParams.get("error");
             display: "grid",
             gridTemplateColumns: "1.1fr 0.9fr",
             gap: 28,
-            alignItems: "stretch",
           }}
         >
+          {/* LEFT SIDE */}
           <div
             style={{
               border: "1px solid #31294c",
               borderRadius: 28,
               background: "linear-gradient(180deg, #151127, #0d0a17)",
               padding: 36,
-              boxShadow: "0 18px 40px rgba(0,0,0,0.35)",
-              position: "relative",
-              overflow: "hidden",
             }}
           >
-            <div
-              style={{
-                position: "absolute",
-                top: -80,
-                right: -80,
-                width: 220,
-                height: 220,
-                borderRadius: "50%",
-                background: "rgba(99,102,241,0.14)",
-                filter: "blur(20px)",
-              }}
-            />
-
-            <p
-              style={{
-                color: "#9f96c7",
-                textTransform: "uppercase",
-                letterSpacing: "2px",
-                fontSize: "12px",
-                marginBottom: "12px",
-                position: "relative",
-              }}
-            >
-              Welcome to Fore Zone
-            </p>
-
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-                marginBottom: 18,
-                position: "relative",
-              }}
-            >
-              <Image
-                src="/forezone-logo.png"
-                alt="Fore Zone"
-                width={38}
-                height={38}
-              />
-              <span
-                style={{
-                  fontSize: 20,
-                  fontWeight: 800,
-                  color: "#eef2ff",
-                }}
-              >
-                Fore Zone
-              </span>
-            </div>
-
-            <h1
-              style={{
-                fontSize: "54px",
-                lineHeight: 1.05,
-                marginTop: 0,
-                marginBottom: 16,
-                maxWidth: 620,
-                position: "relative",
-              }}
-            >
+            <h1 style={{ fontSize: 48, marginBottom: 16 }}>
               Daily picks.
               <br />
               Live board.
@@ -145,237 +82,96 @@ const authError = searchParams.get("error");
               Real competition.
             </h1>
 
-            <p
-              style={{
-                color: "#c7c3da",
-                fontSize: 18,
-                lineHeight: 1.65,
-                maxWidth: 640,
-                marginBottom: 28,
-                position: "relative",
-              }}
-            >
-              Log in with Discord or Twitch to submit your NBA pick of the day,
-              track the NoLs board, and climb the leaderboard.
+            <p style={{ color: "#c7c3da", fontSize: 18 }}>
+              Log in with Discord or Twitch to submit picks and climb the
+              leaderboard.
             </p>
-
-            <div
-              style={{
-                display: "grid",
-                gap: 14,
-                maxWidth: 560,
-                position: "relative",
-              }}
-            >
-              {[
-                "One pick per day",
-                "Live public board and leaderboard",
-                "Edit or delete your pick until game start",
-              ].map((item) => (
-                <div
-                  key={item}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 12,
-                    padding: "14px 16px",
-                    borderRadius: 16,
-                    border: "1px solid #31294c",
-                    background: "rgba(17,15,27,0.82)",
-                  }}
-                >
-                  <span
-                    style={{
-                      width: 22,
-                      height: 22,
-                      borderRadius: "999px",
-                      display: "inline-flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      background: "rgba(99,102,241,0.16)",
-                      color: "#c7d2fe",
-                      fontSize: 12,
-                      fontWeight: 700,
-                      flexShrink: 0,
-                    }}
-                  >
-                    ✓
-                  </span>
-                  <span style={{ color: "#e5e7eb", fontWeight: 600 }}>
-                    {item}
-                  </span>
-                </div>
-              ))}
-            </div>
           </div>
 
+          {/* RIGHT SIDE */}
           <div
             style={{
               border: "1px solid #31294c",
               borderRadius: 28,
               background: "linear-gradient(180deg, #131021, #0b0914)",
               padding: 32,
-              boxShadow: "0 18px 40px rgba(0,0,0,0.35)",
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "center",
             }}
           >
-            <div
-              style={{
-                marginBottom: 24,
-              }}
-            >
-              <p
-                style={{
-                  color: "#9f96c7",
-                  textTransform: "uppercase",
-                  letterSpacing: "2px",
-                  fontSize: "12px",
-                  marginBottom: 10,
-                }}
-              >
-                Sign in
-              </p>
+            <h2 style={{ fontSize: 30, marginBottom: 10 }}>
+              Choose your account
+            </h2>
 
-              <h2
+            {/* ERROR MESSAGE */}
+            {authError === "twitch" && (
+              <div
                 style={{
-                  fontSize: 34,
-                  marginTop: 0,
-                  marginBottom: 12,
+                  marginBottom: 16,
+                  padding: "14px 16px",
+                  borderRadius: 16,
+                  border: "1px solid rgba(239,68,68,0.28)",
+                  background: "rgba(127,29,29,0.18)",
+                  color: "#fecaca",
+                  fontSize: 14,
                 }}
               >
-                Choose your account
-              </h2>
+                Twitch sign-in was blocked. Try again or open Fore Zone in an
+                incognito window.
+              </div>
+            )}
 
-              <p
-                style={{
-                  color: "#c7c3da",
-                  lineHeight: 1.6,
-                  margin: 0,
-                }}
-              >
-                Use the account you want tied to your Fore Zone profile.
-              </p>
-            </div>
-{authError === "twitch" ? (
-  <div
-    style={{
-      marginBottom: 16,
-      padding: "14px 16px",
-      borderRadius: 16,
-      border: "1px solid rgba(239,68,68,0.28)",
-      background: "rgba(127,29,29,0.18)",
-      color: "#fecaca",
-      fontSize: 14,
-      lineHeight: 1.6,
-    }}
-  >
-    Twitch sign-in was blocked or interrupted by your browser. Try again, or open Fore Zone in an incognito/private window and sign in with Twitch there.
-  </div>
-) : null}
             <div style={{ display: "grid", gap: 14 }}>
+              {/* DISCORD */}
               <button
-                type="button"
                 onClick={() => signIn("discord", { callbackUrl: "/" })}
                 style={{
-                  width: "100%",
-                  padding: "15px 18px",
+                  padding: "15px",
                   borderRadius: 16,
-                  border: "1px solid rgba(129,140,248,0.32)",
-                  background:
-                    "linear-gradient(180deg, rgba(99,102,241,0.22), rgba(99,102,241,0.12))",
+                  border: "1px solid #6366f1",
+                  background: "#6366f1",
                   color: "white",
-                  fontWeight: 800,
-                  fontSize: 15,
+                  fontWeight: 700,
                   cursor: "pointer",
-                  boxShadow: "0 0 18px rgba(99,102,241,0.16)",
                 }}
               >
                 Continue with Discord
               </button>
 
-             <a
-  href="/api/auth/signin/twitch?callbackUrl=https%3A%2F%2Fforezone.vercel.app%2F"
-  style={{
-    display: "block",
-    width: "100%",
-    padding: "15px 18px",
-    borderRadius: 16,
-    border: "1px solid rgba(168,85,247,0.28)",
-    background:
-      "linear-gradient(180deg, rgba(168,85,247,0.20), rgba(168,85,247,0.10))",
-    color: "white",
-    fontWeight: 800,
-    fontSize: 15,
-    textDecoration: "none",
-    textAlign: "center",
-    boxShadow: "0 0 18px rgba(168,85,247,0.14)",
-  }}
->
-  Continue with Twitch
-</a>
-<button
-  type="button"
-  onClick={() => {
-  window.location.href =
-    "/api/auth/signin/twitch?callbackUrl=https%3A%2F%2Fforezone.vercel.app%2F";
-}}
-  style={{
-    width: "100%",
-    padding: "15px 18px",
-    borderRadius: 16,
-    border: "1px solid rgba(34,197,94,0.28)",
-    background:
-      "linear-gradient(180deg, rgba(34,197,94,0.20), rgba(34,197,94,0.10))",
-    color: "white",
-    fontWeight: 800,
-    fontSize: 15,
-    cursor: "pointer",
-    boxShadow: "0 0 18px rgba(34,197,94,0.14)",
-  }}
->
-  Continue with Google
-</button>
+              {/* TWITCH (DIRECT LINK — MOST RELIABLE) */}
+              <a
+                href="/api/auth/signin/twitch?callbackUrl=https%3A%2F%2Fforezone.vercel.app%2F"
+                style={{
+                  padding: "15px",
+                  borderRadius: 16,
+                  border: "1px solid #a855f7",
+                  background: "#7c3aed",
+                  color: "white",
+                  fontWeight: 700,
+                  textAlign: "center",
+                  textDecoration: "none",
+                }}
+              >
+                Continue with Twitch
+              </a>
 
-            </div>
-
-            <div
-              style={{
-                marginTop: 24,
-                padding: "14px 16px",
-                borderRadius: 16,
-                border: "1px solid #31294c",
-                background: "#110f1b",
-                color: "#9f96c7",
-                fontSize: 14,
-                lineHeight: 1.6,
-              }}
-            >
-              Your sign-in is used for your profile, daily picks, and leaderboard
-              progress.
+              {/* GOOGLE */}
+              <button
+                onClick={() => signIn("google", { callbackUrl: "/" })}
+                style={{
+                  padding: "15px",
+                  borderRadius: 16,
+                  border: "1px solid #22c55e",
+                  background: "#16a34a",
+                  color: "white",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                Continue with Google
+              </button>
             </div>
           </div>
         </div>
       </section>
-
-      <style jsx>{`
-        @media (max-width: 920px) {
-          section > div {
-            grid-template-columns: 1fr !important;
-          }
-
-          h1 {
-            font-size: 42px !important;
-          }
-        }
-
-        @media (max-width: 640px) {
-          h1 {
-            font-size: 36px !important;
-          }
-        }
-      `}</style>
     </main>
   );
 }
