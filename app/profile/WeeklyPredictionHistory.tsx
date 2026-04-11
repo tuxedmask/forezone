@@ -458,9 +458,22 @@ function WeeklyEntryCard({
 }) {
   const [open, setOpen] = useState(false);
 
-  const correctScores = entry.picks.filter(
-    (pick) => Number(pick.correct_score_points || 0) > 0
-  ).length;
+  const correctScores = entry.picks.filter((pick) => {
+  const hasActualResult =
+    typeof pick.actual_home_score === "number" &&
+    typeof pick.actual_away_score === "number";
+
+  const hasPrediction =
+    typeof pick.predicted_home_score === "number" &&
+    typeof pick.predicted_away_score === "number";
+
+  return (
+    hasActualResult &&
+    hasPrediction &&
+    pick.predicted_home_score === pick.actual_home_score &&
+    pick.predicted_away_score === pick.actual_away_score
+  );
+}).length;
 
   return (
     <div
