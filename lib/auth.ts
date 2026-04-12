@@ -182,12 +182,12 @@ async function clearPendingLinkToken() {
   const cookieStore = await cookies();
 
   cookieStore.set("fz_link_token", "", {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: 0,
-  });
+  httpOnly: true,
+  sameSite: "lax", // keep this
+  secure: true, // 🔥 FORCE TRUE (important)
+  path: "/",
+  maxAge: 0,
+});
 }
 
 async function getValidLinkToken(linkToken: string) {
@@ -232,14 +232,15 @@ export const authOptions: NextAuthOptions = {
       },
     }),
     TwitchProvider({
-      clientId: process.env.TWITCH_CLIENT_ID!,
-      clientSecret: process.env.TWITCH_CLIENT_SECRET!,
-      authorization: {
-        params: {
-          scope: "user:read:email",
-        },
-      },
-    }),
+  clientId: process.env.TWITCH_CLIENT_ID!,
+  clientSecret: process.env.TWITCH_CLIENT_SECRET!,
+  checks: ["state"], // 🔥 ADD THIS
+  authorization: {
+    params: {
+      scope: "user:read:email",
+    },
+  },
+}),
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
