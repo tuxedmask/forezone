@@ -56,8 +56,8 @@ function calculatePickPoints(pick: {
   if (predictedOU === actualOU) {
     ouPoints =
       actualOU === "Over"
-        ? 5 * Number(pick.over_2_5_odds || 0) 
-        : 5 * Number(pick.under_2_5_odds || 0) ;
+        ? 5 * Number(pick.over_2_5_odds || 0)
+        : 5 * Number(pick.under_2_5_odds || 0);
   }
 
   const predicted1X2 = getResult(predictedHome, predictedAway);
@@ -73,15 +73,16 @@ function calculatePickPoints(pick: {
     }
   }
 
-  if (predictedHome === actualHome) correctScorePoints += 17.5;
-  if (predictedAway === actualAway) correctScorePoints += 17.5;
+  if (predictedHome === actualHome) correctScorePoints += 7.5;
+  if (predictedAway === actualAway) correctScorePoints += 7.5;
 
+  // lower draw exact-score bonus here
   if (
     predictedHome === actualHome &&
     predictedAway === actualAway &&
     actualHome === actualAway
   ) {
-    correctScorePoints += 50;
+    correctScorePoints += 5; // change this number if you want
   }
 
   bttsPoints = round2(bttsPoints);
@@ -183,21 +184,30 @@ export async function POST(req: Request) {
         away_win_odds: Number(pick.away_win_odds || 0),
       });
 
-      updates.push(
-        supabase
-          .from("soccer_prediction_picks")
-          .update({
-            actual_home_score: result.actual_home_score,
-            actual_away_score: result.actual_away_score,
-            btts_points: scored.bttsPoints,
-            ou_points: scored.ouPoints,
-            onextwo_points: scored.oneXTwoPoints,
-            correct_score_points: scored.correctScorePoints,
-            points: scored.totalPoints,
-            graded: true,
-          })
-          .eq("id", pick.id)
-      );
+      const savedBtts = round2(scored.bttsPoints);
+const savedOu = round2(scored.ouPoints);
+const saved1x2 = round2(scored.oneXTwoPoints);
+const savedCS = round2(scored.correctScorePoints );
+
+const savedTotal = round2(
+  savedBtts + savedOu + saved1x2 + savedCS
+);
+
+updates.push(
+  supabase
+    .from("soccer_prediction_picks")
+    .update({
+      actual_home_score: result.actual_home_score,
+      actual_away_score: result.actual_away_score,
+      btts_points: savedBtts,
+      ou_points: savedOu,
+      onextwo_points: saved1x2,
+      correct_score_points: savedCS,
+      points: savedTotal,
+      graded: true,
+    })
+    .eq("id", pick.id)
+);
     }
 
     await Promise.all(updates);

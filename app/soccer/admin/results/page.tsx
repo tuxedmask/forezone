@@ -538,7 +538,7 @@ export default function AdminSoccerResultsPage() {
         throw new Error("Enter at least one completed result before grading.");
       }
 
-      const res = await fetch("/api/admin/grade-soccer", {
+      const res = await fetch("/api/soccer/predictions/grade", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -668,12 +668,11 @@ async function handleWeekGraded() {
     }
 
     const updatedRows = orderedRows
-      .filter(
-        ({ row }) =>
-          updatedMatches.has(row.match_id) &&
-          row.home_score !== "" &&
-          row.away_score !== ""
-      )
+  .filter(
+    ({ row }) =>
+      row.home_score !== "" &&
+      row.away_score !== ""
+  )
       .map(({ row }) => ({
         ...row,
         home_score: Number(row.home_score),
@@ -702,33 +701,33 @@ async function handleWeekGraded() {
       throw new Error(saveData?.error || "Failed to save updated games");
     }
 
-    const gradeRes = await fetch("/api/admin/grade-soccer", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        leagueSlug: "premier-league",
-        matchweekLabel,
-        results: updatedRows.map((row) => ({
-          match_id: row.match_id,
-          actual_home_score: Number(row.home_score),
-          actual_away_score: Number(row.away_score),
-        })),
-      }),
-    });
+    const gradeRes = await fetch("/api/soccer/predictions/grade", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    leagueSlug: "premier-league",
+    matchweekLabel,
+    results: updatedRows.map((row) => ({
+      match_id: row.match_id,
+      actual_home_score: Number(row.home_score),
+      actual_away_score: Number(row.away_score),
+    })),
+  }),
+});
 
-    const gradeData = await gradeRes.json();
+const gradeData = await gradeRes.json();
 
-    if (!gradeRes.ok) {
-      throw new Error(gradeData?.error || "Failed to grade updated games");
-    }
+if (!gradeRes.ok) {
+  throw new Error(gradeData?.error || "Failed to grade updated games");
+}
 
     setUpdatedMatches(new Set());
 
     setMessage(
       `Saved and graded ${updatedRows.length} game(s). Updated ${Number(
-        gradeData?.updatedPicks ?? 0
+        gradeData?.gradedPicks ?? 0
       )} pick(s).`
     );
   } catch (err) {

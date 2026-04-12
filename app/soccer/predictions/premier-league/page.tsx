@@ -23,6 +23,14 @@ type Match = {
 type ScorePick = {
   homeScore: string;
   awayScore: string;
+  actualHomeScore?: string;
+  actualAwayScore?: string;
+  graded?: boolean;
+  points?: number;
+  bttsPoints?: number;
+  ouPoints?: number;
+  onextwoPoints?: number;
+  correctScorePoints?: number;
 };
 
 type MatchweekOption = {
@@ -331,6 +339,19 @@ function MatchCard({
   const homeShort = getShortTeamName(match.home);
   const awayShort = getShortTeamName(match.away);
 
+  const isGraded =
+  Boolean(pick.graded) ||
+  (pick.actualHomeScore !== "" &&
+    pick.actualHomeScore !== undefined &&
+    pick.actualAwayScore !== "" &&
+    pick.actualAwayScore !== undefined);
+  const exactHit =
+    isGraded &&
+    pick.actualHomeScore !== "" &&
+    pick.actualAwayScore !== "" &&
+    pick.homeScore === pick.actualHomeScore &&
+    pick.awayScore === pick.actualAwayScore;
+
   const homeScoreNum = Number(pick.homeScore);
   const awayScoreNum = Number(pick.awayScore);
 
@@ -393,12 +414,20 @@ function MatchCard({
   return (
     <div
       className={`relative flex h-full flex-col overflow-hidden rounded-[26px] border p-4 backdrop-blur-xl transition ${
-        locked
-          ? "border-amber-400/20 bg-amber-500/5"
-          : "border-white/10 bg-white/5 hover:border-emerald-400/20 hover:bg-white/[0.07]"
+        exactHit
+          ? "border-emerald-400/40 bg-emerald-500/10 shadow-[0_0_30px_rgba(16,185,129,0.22)]"
+          : locked
+            ? "border-amber-400/20 bg-amber-500/5"
+            : "border-white/10 bg-white/5 hover:border-emerald-400/20 hover:bg-white/[0.07]"
       } ${outerGlowClass}`}
     >
       <div className="relative z-10 flex h-full flex-col">
+        {exactHit ? (
+          <div className="absolute right-0 top-0 z-20 rounded-bl-2xl rounded-tr-[22px] border border-emerald-300/30 bg-emerald-400/15 px-3 py-1.5 text-sm font-black text-emerald-200 shadow-[0_0_18px_rgba(16,185,129,0.28)]">
+            🎯 Bullseye
+          </div>
+        ) : null}
+
         <div className="text-center">
           <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-emerald-200">
             {leagueName}
@@ -469,6 +498,10 @@ function MatchCard({
               />
             ) : null}
 
+            <div className="mb-2 text-center text-[10px] font-bold uppercase tracking-[0.22em] text-cyan-200/75">
+              Your Pick
+            </div>
+
             <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
               <div className="flex justify-center">
                 <ScoreInput
@@ -502,21 +535,56 @@ function MatchCard({
                 />
               </div>
             </div>
+
+            {isGraded &&
+            pick.actualHomeScore !== "" &&
+            pick.actualAwayScore !== "" ? (
+              <div className="mt-3 rounded-[22px] border border-emerald-400/20 bg-emerald-500/10 px-4 py-4">
+                <div className="mb-2 text-center text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-200/85">
+                  Result
+                </div>
+
+                <div className="flex items-center justify-center gap-4">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-[18px] border border-white/10 bg-black/70 text-4xl font-black text-white">
+                    {pick.actualHomeScore}
+                  </div>
+                  <div className="text-3xl font-bold text-white">:</div>
+                  <div className="flex h-16 w-16 items-center justify-center rounded-[18px] border border-white/10 bg-black/70 text-4xl font-black text-white">
+                    {pick.actualAwayScore}
+                  </div>
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
 
-        {projectedPoints ? (
+        {isGraded ? (
           <div className="mt-2.5">
-            <div className="flex items-center justify-center rounded-[18px] border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+            <div className="flex items-center justify-center rounded-[18px] border border-cyan-400/20 bg-cyan-500/10 px-4 py-3">
+              <span className="text-sm font-semibold text-cyan-200">
+                Earned:
+              </span>
+              <span className="ml-2 text-lg font-black text-white">
+  {(
+    Number(pick.onextwoPoints ?? 0) +
+    Number(pick.ouPoints ?? 0) +
+    Number(pick.bttsPoints ?? 0) +
+    Number(pick.correctScorePoints ?? 0)
+  ).toFixed(2)}
+</span>
+              <span className="ml-1 text-sm text-cyan-300">pts</span>
+            </div>
+          </div>
+        ) : projectedPoints ? (
+          <div className="mt-2.5">
+            <div className="flex items-center justify-center rounded-[18px] border border-emerald-400/20 bg-emerald-500/10 px-4 py-3">
               <span className="text-sm font-semibold text-emerald-200">
                 Projected:
               </span>
               <span className="ml-2 text-lg font-black text-white">
                 {projectedPoints.total}
               </span>
-              <span className="ml-1 text-sm font-semibold text-emerald-300/90">
-                pts
-              </span>
+              <span className="ml-1 text-sm text-emerald-300">pts</span>
             </div>
           </div>
         ) : null}
@@ -532,11 +600,15 @@ function MatchCard({
                   <div className="mt-1 text-sm font-semibold text-white">
                     {onextwoLabel}
                   </div>
-                  {projectedPoints && projectedPoints.onextwoBonus > 0 && (
+                  {isGraded ? (
+                    <div className="mt-1 text-xs font-semibold text-cyan-300">
+                      +{(Number(pick.onextwoPoints ?? 0)).toFixed(2)} 
+                    </div>
+                  ) : projectedPoints && projectedPoints.onextwoBonus > 0 ? (
                     <div className="mt-1 text-xs font-semibold text-emerald-300">
                       +{projectedPoints.onextwoBonus}
                     </div>
-                  )}
+                  ) : null}
                 </div>
 
                 <div className="flex flex-col items-center justify-center rounded-xl bg-black/40 py-2 text-center">
@@ -546,11 +618,15 @@ function MatchCard({
                   <div className="mt-1 text-sm font-semibold text-white">
                     {ouLabel}
                   </div>
-                  {projectedPoints && projectedPoints.ouBonus > 0 && (
+                  {isGraded ? (
+                    <div className="mt-1 text-xs font-semibold text-cyan-300">
+                      +{(Number(pick.ouPoints ?? 0)).toFixed(2)}
+                    </div>
+                  ) : projectedPoints && projectedPoints.ouBonus > 0 ? (
                     <div className="mt-1 text-xs font-semibold text-emerald-300">
                       +{projectedPoints.ouBonus}
                     </div>
-                  )}
+                  ) : null}
                 </div>
 
                 <div className="flex flex-col items-center justify-center rounded-xl bg-black/40 py-2 text-center">
@@ -560,19 +636,40 @@ function MatchCard({
                   <div className="mt-1 text-sm font-semibold text-white">
                     {bttsLabel}
                   </div>
-                  {projectedPoints && projectedPoints.bttsBonus > 0 && (
+                  {isGraded ? (
+                    <div className="mt-1 text-xs font-semibold text-cyan-300">
+                      +{(Number(pick.bttsPoints ?? 0)).toFixed(2)}
+                    </div>
+                  ) : projectedPoints && projectedPoints.bttsBonus > 0 ? (
                     <div className="mt-1 text-xs font-semibold text-emerald-300">
                       +{projectedPoints.bttsBonus}
                     </div>
-                  )}
+                  ) : null}
                 </div>
 
-                <div className="flex flex-col items-center justify-center rounded-xl bg-emerald-500/10 py-2 text-center">
-                  <div className="text-[10px] uppercase tracking-[0.18em] text-emerald-300/80">
+                <div
+                  className={`flex flex-col items-center justify-center rounded-xl py-2 text-center ${
+                    isGraded ? "bg-cyan-500/10" : "bg-emerald-500/10"
+                  }`}
+                >
+                  <div
+                    className={`text-[10px] uppercase tracking-[0.18em] ${
+                      isGraded ? "text-cyan-300/80" : "text-emerald-300/80"
+                    }`}
+                  >
                     CS
                   </div>
-                  <div className="mt-1 text-sm font-bold text-emerald-200">
-                    +{projectedPoints?.correctScoreBonus ?? 0}
+                  <div
+                    className={`mt-1 text-sm font-bold ${
+                      isGraded ? "text-cyan-200" : "text-emerald-200"
+                    }`}
+                  >
+                    +
+                    {isGraded
+                      ? (Number(pick.correctScorePoints ?? 0)).toFixed(2)
+                      : Number(projectedPoints?.correctScoreBonus ?? 0).toFixed(
+                          2
+                        )}
                   </div>
                 </div>
               </div>
@@ -731,9 +828,23 @@ export default function PremierLeaguePredictionsPage() {
               const matchId = Number(row.match_id);
 
               nextPicks[matchId] = {
-                homeScore: String(row.predicted_home_score ?? ""),
-                awayScore: String(row.predicted_away_score ?? ""),
-              };
+  homeScore: String(row.predicted_home_score ?? ""),
+  awayScore: String(row.predicted_away_score ?? ""),
+  actualHomeScore:
+    row.actual_home_score === null || row.actual_home_score === undefined
+      ? ""
+      : String(row.actual_home_score),
+  actualAwayScore:
+    row.actual_away_score === null || row.actual_away_score === undefined
+      ? ""
+      : String(row.actual_away_score),
+  graded: Boolean(row.graded),
+  points: Number(row.points ?? 0),
+  bttsPoints: Number(row.btts_points ?? 0),
+  ouPoints: Number(row.ou_points ?? 0),
+  onextwoPoints: Number(row.onextwo_points ?? 0),
+  correctScorePoints: Number(row.correct_score_points ?? 0),
+};
             }
 
             return nextPicks;
@@ -1014,6 +1125,7 @@ export default function PremierLeaguePredictionsPage() {
                 <div className="grid gap-4 lg:grid-cols-2">
                   {matches.map((match) => (
                     <MatchCard
+                    
                       key={match.id}
                       match={match}
                       pick={picks[match.id] || { homeScore: "", awayScore: "" }}

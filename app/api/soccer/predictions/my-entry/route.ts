@@ -52,9 +52,21 @@ export async function GET(req: Request) {
 
     const { data: picks, error: picksError } = await supabase
       .from("soccer_prediction_picks")
-      .select(
-        "match_id, home_team, away_team, predicted_home_score, predicted_away_score"
-      )
+      .select(`
+  match_id,
+  home_team,
+  away_team,
+  predicted_home_score,
+  predicted_away_score,
+  actual_home_score,
+  actual_away_score,
+  graded,
+  points,
+  btts_points,
+  ou_points,
+  onextwo_points,
+  correct_score_points
+`)
       .eq("entry_id", entry.id)
       .order("match_id", { ascending: true });
 
