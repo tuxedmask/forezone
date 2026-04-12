@@ -20,7 +20,7 @@ const SOCCER_TEAM_LOGOS: Record<string, string> = {
   Nottingham: "https://crests.football-data.org/351.png",
   "Nottingham Forest": "https://crests.football-data.org/351.png",
   Southampton: "https://crests.football-data.org/340.png",
-  Sunderland: "https://crests.football-data.org/343.png",
+  Sunderland: "https://upload.wikimedia.org/wikipedia/en/thumb/7/77/Logo_Sunderland.svg/330px-Logo_Sunderland.svg.png",
   Tottenham: "https://crests.football-data.org/73.png",
   "Tottenham Hotspur": "https://crests.football-data.org/73.png",
   "West Ham": "https://crests.football-data.org/563.png",
