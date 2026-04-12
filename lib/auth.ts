@@ -234,7 +234,8 @@ export const authOptions: NextAuthOptions = {
     TwitchProvider({
   clientId: process.env.TWITCH_CLIENT_ID!,
   clientSecret: process.env.TWITCH_CLIENT_SECRET!,
-  checks: ["state"], // 🔥 ADD THIS
+  idToken: false,
+  checks: ["state"],
   authorization: {
     params: {
       scope: "user:read:email",
