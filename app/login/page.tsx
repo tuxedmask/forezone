@@ -304,26 +304,25 @@ export default function LoginPage({
                 Continue with Discord
               </button>
 
-              <a
-                href="/api/auth/signin/twitch?callbackUrl=https%3A%2F%2Fforezone.vercel.app%2F"
-                style={{
-                  display: "block",
-                  width: "100%",
-                  padding: "15px 18px",
-                  borderRadius: 16,
-                  border: "1px solid rgba(168,85,247,0.28)",
-                  background:
-                    "linear-gradient(180deg, rgba(168,85,247,0.20), rgba(168,85,247,0.10))",
-                  color: "white",
-                  fontWeight: 800,
-                  fontSize: 15,
-                  textDecoration: "none",
-                  textAlign: "center",
-                  boxShadow: "0 0 18px rgba(168,85,247,0.14)",
-                }}
-              >
-                Continue with Twitch
-              </a>
+              <button
+  type="button"
+  onClick={() => signIn("twitch", { callbackUrl: "/" })}
+  style={{
+    width: "100%",
+    padding: "15px 18px",
+    borderRadius: 16,
+    border: "1px solid rgba(168,85,247,0.28)",
+    background:
+      "linear-gradient(180deg, rgba(168,85,247,0.20), rgba(168,85,247,0.10))",
+    color: "white",
+    fontWeight: 800,
+    fontSize: 15,
+    cursor: "pointer",
+    boxShadow: "0 0 18px rgba(168,85,247,0.14)",
+  }}
+>
+  Continue with Twitch
+</button>
 
               <button
                 type="button"
