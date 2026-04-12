@@ -232,16 +232,16 @@ export const authOptions: NextAuthOptions = {
       },
     }),
     TwitchProvider({
-  clientId: process.env.TWITCH_CLIENT_ID!,
-  clientSecret: process.env.TWITCH_CLIENT_SECRET!,
-  idToken: false,
-  checks: ["state"],
-  authorization: {
-    params: {
-      scope: "user:read:email",
-    },
-  },
+clientId: process.env.TWITCH_CLIENT_ID!,
+clientSecret: process.env.TWITCH_CLIENT_SECRET!,
+checks: ["state"],
+authorization: {
+params: {
+scope: "openid user:read:email",
+},
+},
 }),
+
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
