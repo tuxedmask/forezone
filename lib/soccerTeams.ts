@@ -20,6 +20,7 @@ const SOCCER_TEAM_LOGOS: Record<string, string> = {
   Nottingham: "https://crests.football-data.org/351.png",
   "Nottingham Forest": "https://crests.football-data.org/351.png",
   Southampton: "https://crests.football-data.org/340.png",
+  Sunderland: "https://crests.football-data.org/343.png",
   Tottenham: "https://crests.football-data.org/73.png",
   "Tottenham Hotspur": "https://crests.football-data.org/73.png",
   "West Ham": "https://crests.football-data.org/563.png",
@@ -164,9 +165,7 @@ function normalizeTeamName(team: string | null) {
 export function getTeamLogo(team: string | null) {
   if (!team) return null;
 
-  if (team === "Sunderland") {
-    return null;
-  }
+  
 
   if (SOCCER_TEAM_LOGOS[team]) {
     return SOCCER_TEAM_LOGOS[team];
@@ -175,9 +174,7 @@ export function getTeamLogo(team: string | null) {
   const normalized = normalizeTeamName(team);
   const alias = TEAM_ALIASES[normalized];
 
-  if (alias === "Sunderland") {
-    return null;
-  }
+ 
 
   if (alias && SOCCER_TEAM_LOGOS[alias]) {
     return SOCCER_TEAM_LOGOS[alias];
