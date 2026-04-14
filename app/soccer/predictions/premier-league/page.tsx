@@ -823,7 +823,7 @@ export default function PremierLeaguePredictionsPage() {
         setAvailableMatchweeks(normalizedOptions);
 
         if (!selectedMatchweek && nextLabel) {
-          setSelectedMatchweek(nextLabel);
+          setSelectedMatchweek("Week 33");
         }
 
         const initialPicks: Record<number, ScorePick> = {};
