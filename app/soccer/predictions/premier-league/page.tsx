@@ -355,6 +355,8 @@ function MatchCard({
   const homeScoreNum = Number(pick.homeScore);
   const awayScoreNum = Number(pick.awayScore);
 
+
+  
   const predictionSide = !previewReady
     ? "none"
     : homeScoreNum > awayScoreNum
@@ -407,6 +409,32 @@ function MatchCard({
 
   const ouLabel = homeScoreNum + awayScoreNum > 2 ? "Over" : "Under";
   const bttsLabel = homeScoreNum > 0 && awayScoreNum > 0 ? "Yes" : "No";
+
+const actualHome = Number(pick.actualHomeScore);
+const actualAway = Number(pick.actualAwayScore);
+
+const hasResult =
+  isGraded &&
+  pick.actualHomeScore !== "" &&
+  pick.actualAwayScore !== "";
+
+const actual1x2 =
+  actualHome > actualAway ? "Home" :
+  actualHome < actualAway ? "Away" : "Draw";
+
+const actualOU =
+  actualHome + actualAway > 2 ? "Over" : "Under";
+
+const actualBTTS =
+  actualHome > 0 && actualAway > 0 ? "Yes" : "No";
+
+const correct1x2 = hasResult && onextwoLabel === actual1x2;
+const correctOU = hasResult && ouLabel === actualOU;
+const correctBTTS = hasResult && bttsLabel === actualBTTS;
+const correctCS =
+  hasResult &&
+  pick.homeScore === pick.actualHomeScore &&
+  pick.awayScore === pick.actualAwayScore;
 
   const projectedPoints = getProjectedPoints(match, pick);
   const showAuthPrompt = authRequired && !locked;
@@ -591,90 +619,114 @@ function MatchCard({
 
         <div className="mt-3">
           {previewReady ? (
-            <div className="rounded-[18px] border border-white/10 bg-white/[0.06] px-3 py-3">
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                <div className="flex flex-col items-center justify-center rounded-xl bg-black/40 py-2 text-center">
-                  <div className="text-[10px] uppercase tracking-[0.18em] text-white/40">
-                    1X2
-                  </div>
-                  <div className="mt-1 text-sm font-semibold text-white">
-                    {onextwoLabel}
-                  </div>
-                  {isGraded ? (
-                    <div className="mt-1 text-xs font-semibold text-cyan-300">
-                      +{(Number(pick.onextwoPoints ?? 0)).toFixed(2)} 
-                    </div>
-                  ) : projectedPoints && projectedPoints.onextwoBonus > 0 ? (
-                    <div className="mt-1 text-xs font-semibold text-emerald-300">
-                      +{projectedPoints.onextwoBonus}
-                    </div>
-                  ) : null}
-                </div>
+  <div className="rounded-[18px] border border-white/10 bg-white/[0.06] px-3 py-3">
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
 
-                <div className="flex flex-col items-center justify-center rounded-xl bg-black/40 py-2 text-center">
-                  <div className="text-[10px] uppercase tracking-[0.18em] text-white/40">
-                    O/U 2.5
-                  </div>
-                  <div className="mt-1 text-sm font-semibold text-white">
-                    {ouLabel}
-                  </div>
-                  {isGraded ? (
-                    <div className="mt-1 text-xs font-semibold text-cyan-300">
-                      +{(Number(pick.ouPoints ?? 0)).toFixed(2)}
-                    </div>
-                  ) : projectedPoints && projectedPoints.ouBonus > 0 ? (
-                    <div className="mt-1 text-xs font-semibold text-emerald-300">
-                      +{projectedPoints.ouBonus}
-                    </div>
-                  ) : null}
-                </div>
+      {/* 1X2 */}
+      <div
+        className={`flex flex-col items-center justify-center rounded-xl py-2 text-center ${
+          isGraded
+            ? correct1x2
+              ? "bg-emerald-500/15 border border-emerald-400/40 shadow-[0_0_16px_rgba(16,185,129,0.35)]"
+              : "bg-red-500/10 border border-red-400/40 shadow-[0_0_14px_rgba(248,113,113,0.25)]"
+            : "bg-black/40"
+        }`}
+      >
+        <div className="text-[10px] uppercase tracking-[0.18em] text-white/40">
+          1X2
+        </div>
+        <div className="mt-1 text-sm font-semibold text-white">
+          {onextwoLabel}
+        </div>
+        {isGraded ? (
+          <div className="mt-1 text-xs font-semibold text-white">
+            +{(Number(pick.onextwoPoints ?? 0)).toFixed(2)}
+          </div>
+        ) : projectedPoints && projectedPoints.onextwoBonus > 0 ? (
+          <div className="mt-1 text-xs font-semibold text-emerald-300">
+            +{projectedPoints.onextwoBonus}
+          </div>
+        ) : null}
+      </div>
 
-                <div className="flex flex-col items-center justify-center rounded-xl bg-black/40 py-2 text-center">
-                  <div className="text-[10px] uppercase tracking-[0.18em] text-white/40">
-                    BTTS
-                  </div>
-                  <div className="mt-1 text-sm font-semibold text-white">
-                    {bttsLabel}
-                  </div>
-                  {isGraded ? (
-                    <div className="mt-1 text-xs font-semibold text-cyan-300">
-                      +{(Number(pick.bttsPoints ?? 0)).toFixed(2)}
-                    </div>
-                  ) : projectedPoints && projectedPoints.bttsBonus > 0 ? (
-                    <div className="mt-1 text-xs font-semibold text-emerald-300">
-                      +{projectedPoints.bttsBonus}
-                    </div>
-                  ) : null}
-                </div>
+      {/* O/U */}
+      <div
+        className={`flex flex-col items-center justify-center rounded-xl py-2 text-center ${
+          isGraded
+            ? correctOU
+              ? "bg-emerald-500/15 border border-emerald-400/40 shadow-[0_0_16px_rgba(16,185,129,0.35)]"
+              : "bg-red-500/10 border border-red-400/40 shadow-[0_0_14px_rgba(248,113,113,0.25)]"
+            : "bg-black/40"
+        }`}
+      >
+        <div className="text-[10px] uppercase tracking-[0.18em] text-white/40">
+          O/U 2.5
+        </div>
+        <div className="mt-1 text-sm font-semibold text-white">
+          {ouLabel}
+        </div>
+        {isGraded ? (
+          <div className="mt-1 text-xs font-semibold text-white">
+            +{(Number(pick.ouPoints ?? 0)).toFixed(2)}
+          </div>
+        ) : projectedPoints && projectedPoints.ouBonus > 0 ? (
+          <div className="mt-1 text-xs font-semibold text-emerald-300">
+            +{projectedPoints.ouBonus}
+          </div>
+        ) : null}
+      </div>
 
-                <div
-                  className={`flex flex-col items-center justify-center rounded-xl py-2 text-center ${
-                    isGraded ? "bg-cyan-500/10" : "bg-emerald-500/10"
-                  }`}
-                >
-                  <div
-                    className={`text-[10px] uppercase tracking-[0.18em] ${
-                      isGraded ? "text-cyan-300/80" : "text-emerald-300/80"
-                    }`}
-                  >
-                    CS
-                  </div>
-                  <div
-                    className={`mt-1 text-sm font-bold ${
-                      isGraded ? "text-cyan-200" : "text-emerald-200"
-                    }`}
-                  >
-                    +
-                    {isGraded
-                      ? (Number(pick.correctScorePoints ?? 0)).toFixed(2)
-                      : Number(projectedPoints?.correctScoreBonus ?? 0).toFixed(
-                          2
-                        )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          ) : (
+      {/* BTTS */}
+      <div
+        className={`flex flex-col items-center justify-center rounded-xl py-2 text-center ${
+          isGraded
+            ? correctBTTS
+              ? "bg-emerald-500/15 border border-emerald-400/40 shadow-[0_0_16px_rgba(16,185,129,0.35)]"
+              : "bg-red-500/10 border border-red-400/40 shadow-[0_0_14px_rgba(248,113,113,0.25)]"
+            : "bg-black/40"
+        }`}
+      >
+        <div className="text-[10px] uppercase tracking-[0.18em] text-white/40">
+          BTTS
+        </div>
+        <div className="mt-1 text-sm font-semibold text-white">
+          {bttsLabel}
+        </div>
+        {isGraded ? (
+          <div className="mt-1 text-xs font-semibold text-white">
+            +{(Number(pick.bttsPoints ?? 0)).toFixed(2)}
+          </div>
+        ) : projectedPoints && projectedPoints.bttsBonus > 0 ? (
+          <div className="mt-1 text-xs font-semibold text-emerald-300">
+            +{projectedPoints.bttsBonus}
+          </div>
+        ) : null}
+      </div>
+
+      {/* CS */}
+      <div
+        className={`flex flex-col items-center justify-center rounded-xl py-2 text-center ${
+          isGraded
+            ? correctCS
+              ? "bg-emerald-500/20 border border-emerald-300/60 shadow-[0_0_22px_rgba(16,185,129,0.45)]"
+              : "bg-red-500/10 border border-red-400/40 shadow-[0_0_14px_rgba(248,113,113,0.25)]"
+            : "bg-emerald-500/10"
+        }`}
+      >
+        <div className="text-[10px] uppercase tracking-[0.18em] text-white/40">
+          CS
+        </div>
+        <div className="mt-1 text-sm font-bold text-white">
+          +
+          {isGraded
+            ? (Number(pick.correctScorePoints ?? 0)).toFixed(2)
+            : Number(projectedPoints?.correctScoreBonus ?? 0).toFixed(2)}
+        </div>
+      </div>
+
+    </div>
+  </div>
+) : (
             <div className="rounded-[18px] border border-white/10 bg-white/[0.05] px-3 py-3">
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {["1X2", "O/U 2.5", "BTTS", "CS"].map((label) => (

@@ -335,15 +335,14 @@ function getCardGlow() {
   </div>
 ) : null}
 
-<div className="relative z-10 flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">        {/* LEFT */}
-        <div className="min-w-0 xl:flex-[1.05] xl:pr-3">
+<div className="relative z-10 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">        <div className="min-w-0 xl:flex-[1.05] xl:pr-3">
           <div className="mb-3 text-center text-[10px] font-semibold uppercase tracking-[0.22em] text-[#9f96c7]">
             {formatKickoff(pick.kickoff_time ?? null)}
           </div>
 
           <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-3">
             <div className="flex flex-col items-center text-center">
-              <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl border border-indigo-400/25 bg-indigo-500/10">
+              <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl border border-indigo-400/25 bg-indigo-500/10">
                 {homeLogo ? (
                   <img
                     src={homeLogo}
@@ -371,7 +370,7 @@ function getCardGlow() {
             </div>
 
             <div className="flex flex-col items-center text-center">
-              <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl border border-cyan-400/25 bg-cyan-500/10">
+              <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl border border-cyan-400/25 bg-cyan-500/10">
                 {awayLogo ? (
                   <img
                     src={awayLogo}
@@ -419,30 +418,6 @@ function getCardGlow() {
               wide
             />
           </div>
-
-          <StatBox
-            label="O/U"
-            value={predictedOU}
-            accent={correctOU ? "hit" : wrongOU ? "miss" : "default"}
-          />
-
-          <StatBox
-            label="BTTS"
-            value={predictedBTTS}
-            accent={correctBTTS ? "hit" : wrongBTTS ? "miss" : "default"}
-          />
-
-          <StatBox
-            label="1X2"
-            value={get1x2Label(predicted1x2)}
-            accent={correct1x2 ? "hit" : wrong1x2 ? "miss" : "default"}
-          />
-
-          <StatBox
-  label="CS"
-  value={hasResult ? (exactHit ? "🎯" : "-") : "-"}
-  accent={exactHit ? "hit" : wrongCS ? "miss" : "default"}
-/>
         </div>
       </div>
     </div>
