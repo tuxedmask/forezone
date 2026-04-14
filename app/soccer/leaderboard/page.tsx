@@ -751,9 +751,18 @@ throw new Error(data?.details || data?.error || `Request failed: ${res.status}`)
             </div>
           ) : expandedPicks.length > 0 ? (
             <div className="grid gap-4">
-              {expandedPicks.map((pick) => (
-                <PickRowCard key={pick.id} pick={pick} />
-              ))}
+              {[...expandedPicks]
+  .sort((a, b) => {
+    const aTime = a.kickoff_time ? new Date(a.kickoff_time).getTime() : Number.MAX_SAFE_INTEGER;
+    const bTime = b.kickoff_time ? new Date(b.kickoff_time).getTime() : Number.MAX_SAFE_INTEGER;
+
+    if (aTime !== bTime) return aTime - bTime;
+
+    return String(a.home_team || "").localeCompare(String(b.home_team || ""));
+  })
+  .map((pick) => (
+    <PickRowCard key={pick.id} pick={pick} />
+  ))}
             </div>
           ) : (
             <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white/60">

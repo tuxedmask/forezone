@@ -1175,7 +1175,16 @@ export default function PremierLeaguePredictionsPage() {
                 </div>
               ) : (
                 <div className="grid gap-4 lg:grid-cols-2">
-                  {matches.map((match) => (
+                  {[...matches]
+  .sort((a, b) => {
+    const timeDiff =
+      new Date(a.kickoff).getTime() - new Date(b.kickoff).getTime();
+
+    if (timeDiff !== 0) return timeDiff;
+
+    return a.home.localeCompare(b.home);
+  })
+  .map((match) => (
                     <MatchCard
                     
                       key={match.id}
@@ -1206,7 +1215,16 @@ export default function PremierLeaguePredictionsPage() {
               </p>
 
               <div className="mt-4 space-y-2.5">
-                {matches.map((match) => {
+                {[...matches]
+  .sort((a, b) => {
+    const timeDiff =
+      new Date(a.kickoff).getTime() - new Date(b.kickoff).getTime();
+
+    if (timeDiff !== 0) return timeDiff;
+
+    return a.home.localeCompare(b.home);
+  })
+  .map((match) => {
                   const pick = picks[match.id] || {
                     homeScore: "",
                     awayScore: "",
