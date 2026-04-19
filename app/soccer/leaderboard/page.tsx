@@ -248,26 +248,40 @@ throw new Error(data?.details || data?.error || `Request failed: ${res.status}`)
     let active = true;
 
     async function loadCurrentMatchweek() {
-      try {
-        const mwRes = await fetch(
-          "/api/soccer/predictions/premier-league/matchweek",
-          { cache: "no-store" }
-        );
-        const mwData = await mwRes.json();
+  try {
+    const adminRes = await fetch("/api/admin/soccer-active-week", {
+      cache: "no-store",
+    });
+    const adminData = await adminRes.json();
 
-        const currentMW =
-          Number(mwData?.matchday ?? mwData?.matchweek ?? 0) || null;
+    const forcedWeek = Number(adminData?.forcedMatchweek ?? 0) || null;
 
-        if (!active) return;
-
-        const clampedWeek = currentMW && currentMW < 32 ? 32 : currentMW;
-
-        setCurrentMatchweek(clampedWeek);
-        setSelectedMatchweek((prev) => prev ?? clampedWeek);
-      } catch (error) {
-        console.error("Failed to load current matchweek:", error);
-      }
+    if (forcedWeek) {
+      if (!active) return;
+      setCurrentMatchweek(forcedWeek);
+      setSelectedMatchweek((prev) => prev ?? forcedWeek);
+      return;
     }
+
+    const mwRes = await fetch(
+      "/api/soccer/predictions/premier-league/matchweek",
+      { cache: "no-store" }
+    );
+    const mwData = await mwRes.json();
+
+    const currentMW =
+      Number(mwData?.matchday ?? mwData?.matchweek ?? 0) || null;
+
+    if (!active) return;
+
+    const clampedWeek = currentMW && currentMW < 32 ? 32 : currentMW;
+
+    setCurrentMatchweek(clampedWeek);
+    setSelectedMatchweek((prev) => prev ?? clampedWeek);
+  } catch (error) {
+    console.error("Failed to load current matchweek:", error);
+  }
+}
 
     loadCurrentMatchweek();
 

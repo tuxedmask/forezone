@@ -791,10 +791,26 @@ export default function PremierLeaguePredictionsPage() {
         setSubmitSuccess("");
         setHasExistingEntry(false);
 
+let effectiveSelectedMatchweek = selectedMatchweek;
+
+if (!effectiveSelectedMatchweek) {
+  const adminRes = await fetch("/api/admin/soccer-active-week", {
+    cache: "no-store",
+  });
+  const adminData = await adminRes.json();
+
+  const forcedWeek = Number(adminData?.forcedMatchweek ?? 0) || null;
+
+  if (forcedWeek) {
+    effectiveSelectedMatchweek = `Week ${forcedWeek}`;
+    setSelectedMatchweek(`Week ${forcedWeek}`);
+  }
+}
+        
         const params = new URLSearchParams();
-        if (selectedMatchweek) {
-          params.set("matchweek", selectedMatchweek);
-        }
+        if (effectiveSelectedMatchweek) {
+  params.set("matchweek", effectiveSelectedMatchweek);
+}
 
         const query = params.toString();
         const res = await fetch(
@@ -822,9 +838,9 @@ export default function PremierLeaguePredictionsPage() {
         setMatchweekLabel(nextLabel);
         setAvailableMatchweeks(normalizedOptions);
 
-        if (!selectedMatchweek && nextLabel) {
-          setSelectedMatchweek("Week 33");
-        }
+        if (!effectiveSelectedMatchweek && nextLabel) {
+  setSelectedMatchweek(nextLabel);
+}
 
         const initialPicks: Record<number, ScorePick> = {};
         for (const match of liveMatches) {

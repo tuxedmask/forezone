@@ -671,21 +671,20 @@ function FlameStyles() {
 
 export default function WeeklyPredictionHistory({
   entries,
+  currentWeekNumber,
 }: {
   entries: WeeklyEntryWithPicks[];
+  currentWeekNumber?: number | null;
 }) {
-  const pendingWeeks = entries
-    .filter((entry) => !entry.graded)
-    .map((entry) => getWeekNumber(entry.matchweekLabel))
-    .filter((week) => week > 0);
+  const fallbackCurrentWeekNumber = entries.reduce((max, entry) => {
+    const weekNumber = getWeekNumber(entry.matchweekLabel);
+    return weekNumber > max ? weekNumber : max;
+  }, 0);
 
-  const currentWeekNumber =
-    pendingWeeks.length > 0
-      ? Math.min(...pendingWeeks)
-      : entries.reduce((max, entry) => {
-          const weekNumber = getWeekNumber(entry.matchweekLabel);
-          return weekNumber > max ? weekNumber : max;
-        }, 0);
+  const activeWeekNumber =
+    currentWeekNumber && currentWeekNumber > 0
+      ? currentWeekNumber
+      : fallbackCurrentWeekNumber;
 
   return (
   <>
@@ -712,8 +711,7 @@ export default function WeeklyPredictionHistory({
             <WeeklyEntryCard
               key={entry.id}
               entry={entry}
-              isCurrentWeek={getWeekNumber(entry.matchweekLabel) === currentWeekNumber}
-            />
+isCurrentWeek={getWeekNumber(entry.matchweekLabel) === activeWeekNumber}            />
           ))}
         </div>
       )}

@@ -87,14 +87,28 @@ export async function GET(req: NextRequest) {
 
     const currentMatchday = matchdays[0] ?? null;
 
-    let selectedMatchday = currentMatchday;
+const { data: adminState } = await supabase
+  .from("soccer_admin_state")
+  .select("forced_matchweek")
+  .eq("league_slug", "premier-league")
+  .maybeSingle();
 
-    if (requestedMatchweek) {
-      const parsed = Number(requestedMatchweek.replace("Week ", ""));
-      if (!Number.isNaN(parsed)) {
-        selectedMatchday = parsed;
-      }
-    }
+const forcedMatchday =
+  Number(adminState?.forced_matchweek ?? 0) || null;
+
+const safeForcedMatchday =
+  forcedMatchday && matchdays.includes(forcedMatchday)
+    ? forcedMatchday
+    : null;
+
+let selectedMatchday = safeForcedMatchday ?? currentMatchday;
+
+if (requestedMatchweek) {
+  const parsed = Number(requestedMatchweek.replace("Week ", ""));
+  if (!Number.isNaN(parsed)) {
+    selectedMatchday = parsed;
+  }
+}
 
     const selectedFixtures = fixtures
       .filter((m) => m.matchday === selectedMatchday)
@@ -139,16 +153,33 @@ export async function GET(req: NextRequest) {
       const odds = oddsMap.get(String(fixture.match_id)) || null;
       return formatMatch(fixture, odds);
     });
+// 🔥 check if current week is graded
+let isCurrentWeekGraded = false;
 
+if (selectedMatchday !== null) {
+  const label = `Week ${selectedMatchday}`;
+
+  const { data: weekStatus } = await supabase
+    .from("soccer_week_status")
+    .select("is_graded")
+    .eq("league_slug", "premier-league")
+    .eq("matchweek_label", label)
+    .single();
+
+  if (weekStatus?.is_graded) {
+    isCurrentWeekGraded = true;
+  }
+}
     return NextResponse.json({
-      leagueSlug: "premier-league",
-      leagueName: fixtures[0]?.league_name || "Premier League",
-      matchweekLabel:
-        selectedMatchday !== null ? `Week ${selectedMatchday}` : null,
-      matchday: selectedMatchday,
-      matches: enrichedMatches,
-      availableMatchweeks,
-    });
+  leagueSlug: "premier-league",
+  leagueName: fixtures[0]?.league_name || "Premier League",
+  matchweekLabel:
+    selectedMatchday !== null ? `Week ${selectedMatchday}` : null,
+  matchday: selectedMatchday,
+  matches: enrichedMatches,
+  availableMatchweeks,
+  isCurrentWeekGraded, // 🔥 ADD THIS
+});
   } catch (error) {
     return NextResponse.json(
       {

@@ -9,6 +9,13 @@ import LinkAccountsCard from "./LinkAccountsCard";
 import WeeklyPredictionHistory, {
   WeeklyEntryWithPicks,
 } from "./WeeklyPredictionHistory";
+import { createClient } from "@supabase/supabase-js";
+
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 type LinkedAccountRow = {
   provider: "discord" | "twitch";
@@ -166,10 +173,11 @@ export default async function ProfilePage() {
   const appUserId = (session.user as any).appUserId as string;
   const provider = (session.user as any).provider as string | undefined;
 
-  const [
+ const [
   { data: linkedAccounts, error: linkedAccountsError },
   { data: entries, error: entriesError },
   { data: userRow, error: userError },
+  { data: adminState, error: adminStateError },
 ] = await Promise.all([
   supabase
     .from("user_accounts")
@@ -185,6 +193,11 @@ export default async function ProfilePage() {
     .select("alias")
     .eq("id", appUserId)
     .maybeSingle(),
+  supabaseAdmin
+  .from("soccer_admin_state")
+  .select("forced_matchweek")
+  .eq("league_slug", "premier-league")
+  .maybeSingle()
 ]);
 
   if (linkedAccountsError) {
@@ -194,6 +207,10 @@ export default async function ProfilePage() {
   if (entriesError) {
     throw new Error(entriesError.message);
   }
+
+  if (adminStateError) {
+  throw new Error(adminStateError.message);
+}
 
   const linkedAccountsData = (linkedAccounts ?? []) as LinkedAccountRow[];
   const soccerEntries = (entries ?? []) as SoccerEntryRow[];
@@ -297,11 +314,13 @@ export default async function ProfilePage() {
     .sort((a, b) => getWeekNumber(a.matchweekLabel) - getWeekNumber(b.matchweekLabel));
 
   const stats = calculateEntryStats(soccerEntries, entryPicks);
-
+const adminCurrentWeek =
+  Number((adminState as { forced_matchweek?: number | null } | null)?.forced_matchweek ?? 0) || null;
   const displayAlias = (userRow as { alias?: string | null } | null)?.alias ?? null;
 const displayName = displayAlias || session.user.name || "User";
   const displayImage = session.user.image || null;
 
+  console.log("adminCurrentWeek", adminCurrentWeek);
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,_#1a1333_0%,_#0d0a19_45%,_#05030b_100%)] px-6 py-10 text-white">
       <div className="mx-auto max-w-6xl">
@@ -410,7 +429,10 @@ const displayName = displayAlias || session.user.name || "User";
 <LinkAccountsCard accounts={linkedAccountsData} />
           </div>
 
-          <WeeklyPredictionHistory entries={weeklyEntries} />
+          <WeeklyPredictionHistory
+  entries={weeklyEntries}
+  currentWeekNumber={adminCurrentWeek}
+/>
         </div>
       </div>
     </main>

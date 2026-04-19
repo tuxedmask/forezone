@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+
+
 type Match = {
   id: number;
   home: string;
@@ -412,6 +414,9 @@ export default function AdminSoccerOddsPage() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
+  const [forcedMatchweek, setForcedMatchweek] = useState("");
+const [savingForcedWeek, setSavingForcedWeek] = useState(false);
+
   useEffect(() => {
     async function loadPage() {
       try {
@@ -419,6 +424,19 @@ export default function AdminSoccerOddsPage() {
         setError("");
         setMessage("");
 
+
+        const activeWeekRes = await fetch("/api/admin/soccer-active-week", {
+  cache: "no-store",
+});
+const activeWeekData = await activeWeekRes.json();
+
+const adminForcedWeek =
+  Number(activeWeekData?.forcedMatchweek ?? 0) || null;
+
+if (!selectedMatchweek && adminForcedWeek) {
+  setForcedMatchweek(String(adminForcedWeek));
+  setSelectedMatchweek(`Week ${adminForcedWeek}`);
+}
         const params = new URLSearchParams();
         if (selectedMatchweek) {
           params.set("matchweek", selectedMatchweek);
@@ -544,7 +562,42 @@ export default function AdminSoccerOddsPage() {
       setSaving(false);
     }
   }
+async function handleSetActiveWeek() {
+  try {
+    setSavingForcedWeek(true);
+    setError("");
+    setMessage("");
 
+    const weekNumber = Number(String(forcedMatchweek).replace(/\D/g, ""));
+
+    if (!weekNumber) {
+      throw new Error("Pick a valid gameweek first.");
+    }
+
+    const res = await fetch("/api/admin/soccer-active-week", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        forcedMatchweek: weekNumber,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data?.error || "Failed to set active gameweek");
+    }
+
+    setSelectedMatchweek(`Week ${weekNumber}`);
+    setMessage(`Active gameweek set to Week ${weekNumber}.`);
+  } catch (err) {
+    setError(err instanceof Error ? err.message : "Failed to set active gameweek");
+  } finally {
+    setSavingForcedWeek(false);
+  }
+}
   return (
     <main className="min-h-screen bg-[#05070f] px-4 py-10 text-white sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl">
@@ -563,7 +616,41 @@ export default function AdminSoccerOddsPage() {
             match.
           </p>
         </div>
+<div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-indigo-200">
+    Active Gameweek
+  </div>
 
+  <div className="mt-3 flex gap-3">
+    <select
+      value={forcedMatchweek}
+      onChange={(e) => setForcedMatchweek(e.target.value)}
+      className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm font-semibold text-white outline-none transition hover:border-white/15 focus:border-cyan-400/35"
+    >
+      <option value="" className="bg-[#0b1020] text-white">
+        Select week
+      </option>
+      {availableMatchweeks.map((option) => (
+        <option
+          key={option.value}
+          value={String(option.label).replace(/\D/g, "")}
+          className="bg-[#0b1020] text-white"
+        >
+          {option.label}
+        </option>
+      ))}
+    </select>
+
+    <button
+      type="button"
+      onClick={handleSetActiveWeek}
+      disabled={savingForcedWeek || !forcedMatchweek}
+      className="rounded-xl border border-cyan-400/25 bg-cyan-500/15 px-5 py-3 text-sm font-bold uppercase tracking-[0.16em] text-cyan-100 transition hover:bg-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      {savingForcedWeek ? "Setting..." : "Set Week"}
+    </button>
+  </div>
+</div>
         <div className="mb-6 grid gap-4 lg:grid-cols-[1fr_auto]">
           <div className="rounded-[24px] border border-white/10 bg-white/5 p-4">
             <div className="grid gap-4 md:grid-cols-2">
